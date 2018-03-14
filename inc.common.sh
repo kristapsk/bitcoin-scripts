@@ -12,6 +12,13 @@ while (( ${#} > 0 )) && [[ ${1:0:1} == "-" ]]; do
 done
 bitcoin_cli="$bitcoin_cli$bitcoin_cli_options"
 
+# Some constants
+TX_FIXED_SIZE=10
+TX_P2PKH_IN_SIZE=148
+TX_P2PKH_OUT_SIZE=34
+TX_P2WSH_IN_SIZE=104
+TX_P2SH_OUT_SIZE=32
+
 # Common useful functions
 
 function btc_amount_format()
@@ -21,12 +28,56 @@ function btc_amount_format()
 
 function bc_float_calc()
 {
-    echo "$1" | bc | btc_amount_format
+    echo "scale=8; $1" | bc | btc_amount_format
 }
 
 function call_bitcoin_cli()
 {
     $bitcoin_cli "$@" || kill $$
+}
+
+function is_p2pkh_bitcoin_address()
+{
+    [[ ${1:0:1} =~ ^[1mn] ]]
+}
+
+function is_p2sh_bitcoin_address()
+{
+    [[ ${1:0:1} =~ ^[23] ]]
+}
+
+function getnewaddress_p2pkh()
+{
+    address=$(call_bitcoin_cli getnewaddress)
+    if ! is_p2pkh_bitcoin_address $address; then
+		echo "FATAL: getnewaddress returns non-P2PKH address!"
+		exit 1
+	fi
+	echo "$address"
+}
+
+function getnewaddress_p2wsh()
+{
+	address=$(call_bitcoin_cli getnewaddress)
+	if is_p2pkh_bitcoin_address $address; then
+		address=$(call_bitcoin_cli addwitnessaddress $address)
+	fi
+	if ! is_p2sh_bitcoin_address $address; then
+		echo "FATAL: don't know how to generate P2WSH address!"
+		exit 1
+	fi
+	echo "$address"
+}
+
+# BTC amounts - is "$1" greater than or equal to "#2"
+# Both BTC and satoshi amounts will actually work here
+function is_btc_gte()
+{
+    (( \
+        $(echo "$1" | btc_amount_format | tr -d '.' | sed 's/^0*//' | sed 's/^$/0/') \
+            >= \
+        $(echo "$2" | btc_amount_format | tr -d '.' | sed 's/^0*//' | sed 's/^$/0/') \
+    ))
 }
 
 # Only P2PKH/P2SH supported for now, no bech32.
@@ -39,11 +90,6 @@ function is_valid_bitcoin_address()
         echo $1 | grep -qse '^[13][a-km-zA-HJ-NP-Z1-9]\{25,34\}$'
         return $?
     fi
-}
-
-function is_p2pkh_bitcoin_address()
-{
-    [[ ${1:0:1} =~ ^[1mn] ]]
 }
 
 function jq_btc_float()
