@@ -26,6 +26,10 @@ shift
 
 min_utxo_amount=$(bc_float_calc "$amount * $taker_utxo_amtpercent / 100")
 fee=$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)
+if [ "$fee" == "" ]; then
+    echo "estimatesmartfee failed"
+    exit 1
+fi
 if is_btc_gte "$fee" "$(bc_float_calc "$absurd_fee_per_kb * 0.00000001")"; then
     echo -n "Estimated fee per KB ($fee) is greater than absurd value: "
     echo "$(bc_float_calc "$absurd_fee_per_kb * 0.00000001"), quitting."
@@ -57,13 +61,16 @@ if (( $p2pkh_recipient_count > 1 )) && (( $p2sh_recipient_count > 1 )); then
     exit 2
 fi
 
-(( $p2pkh_recipient_count > $p2sh_recipient_count )) && \
-    input_type="p2pkh" || input_type="p2sh"
-
-if [ "$input_type" != "p2pkh" ]; then
-    echo "TODO: P2SH fake coinjoin isn't yet working"
-    exit 1
+if (( ${#recipients[@]} > $(( $TX_OUTPUTS_MAX / 2 )) )); then
+    echo "More than $(( $TX_OUTPUTS_MAX / 2 )) recipients aren't supported!"
+    exit 3
 fi
+
+(( $p2pkh_recipient_count > $p2sh_recipient_count )) && \
+    input_type="p2pkh" || input_type="p2wsh"
+
+echo "Recipients: ${recipients[@]}"
+echo "input_type: $input_type"
 
 utxo="$(call_bitcoin_cli listunspent $taker_utxo_age 999999)"
 readarray -t utxo_txids < <( echo "$utxo" | jq -r ".[].txid" )
@@ -136,14 +143,11 @@ for i in $(seq 0 $(( $mixdepth - 2 ))); do
     if ! is_btc_gte "$amount" "$current_mixdepth_inputs_sum"; then
         # Add some simple random "maker" fee for now (800 .. 1200)
         makerfee="$(bc_float_calc "$(( $RANDOM % 400 + 800 )) * 0.00000001")"
-        if [ "$input_type" == "p2sh" ]; then
-            maker_change_outputs+=("$(getnewaddress_p2wsh)")
+        if [ "$input_type" == "p2wsh" ]; then
             maker_change_outputs+=("$(getnewaddress_p2wsh)")
         else
             maker_change_outputs+=("$(getnewaddress_p2pkh)")
-            maker_change_outputs+=("$(getnewaddress_p2pkh)")
         fi
-        maker_change_amounts+=("$amount")
         maker_change_amounts+=("$(bc_float_calc "$current_mixdepth_inputs_sum - $amount + $makerfee")")
         total_maker_fees="$(bc_float_calc "$total_maker_fees + $makerfee")"
     fi
@@ -165,22 +169,36 @@ if is_btc_gte "$amount" "$current_mixdepth_inputs_sum"; then
 fi
 
 # Calculate fees
-# Currently assume we will have two outputs per each input
-# May not be true for some rare cases, but this way it's easer
-# In those rare cases you will pay some extra satoshis to miners
-tx_size=$(( $TX_FIXED_SIZE + $p2pkh_recipient_count * $TX_P2PKH_OUT_SIZE * 2 + $p2sh_recipient_count * $TX_P2SH_OUT_SIZE * 2 ))
+# https://bitcoincore.org/en/segwit_wallet_dev/#transaction-fee-estimation
+# We do periodic division by 4 for SegWit TX's to calculate required input sizes,
+# not once at the end. This could end up with a little bit bigger TX fee than required,
+# due to rounding.
+
+# Recipients
+tx_vsize=$(( $p2pkh_recipient_count * $TX_P2PKH_OUT_SIZE ))
+tx_vsize=$(( $tx_vsize + $p2sh_recipient_count * $TX_P2SH_OUT_SIZE ))
+# Fixed size + "maker" inputs + "maker" change outputs
 if [ "$input_type" == "p2pkh" ]; then
-    tx_size=$(( $tx_size + ${#maker_utxo_idxs[@]} * $TX_P2PKH_IN_SIZE ))
+    tx_vsize=$(( $tx_vsize + $TX_FIXED_SIZE ))
+    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2PKH_IN_SIZE ))
+    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2PKH_IN_SIZE ))
 else
-    tx_size=$(( $tx_size + ${#maker_utxo_idxs[@]} * $TX_P2WSH_IN_SIZE ))
+    tx_vsize=$(( $tx_vsize * 4 ))
+    tx_vsize=$(( $tx_vsize + $TX_FIXED_SIZE * 3 + $TX_SEGWIT_FIXED_SIZE ))
+    # P2WSH inputs
+    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2WSH_IN_SIZE * 3 ))
+    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * ($TX_P2WSH_IN_SIZE + $TX_P2WSH_WITNESS_SIZE) ))
+    # P2SH outputs
+    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * ($TX_P2WSH_IN_SIZE + $TX_P2WSH_WITNESS_SIZE) ))
+    # real size
+    tx_vsize=$(( ($tx_vsize + 1) / 4 ))
 fi
-echo "tx_size = $tx_size"
+
+# Calculate taker fee
+taker_amount=$(bc_float_calc "$amount + $tx_vsize * $fee * 0.001 + $total_maker_fees")
+echo "taker_amount = $taker_amount"
 
 # Select "taker" inputs
-taker_amount=$(bc_float_calc "$amount + $tx_size * $fee * 0.001")
-echo "taker_amount = $taker_amount"
-taker_amount=$(bc_float_calc "$amount + $tx_size * $fee * 0.001 + $total_maker_fees")
-echo "taker_amount = $taker_amount"
 
 taker_utxo_idxs=()
 current_mixdepth_inputs_sum=0
@@ -194,11 +212,13 @@ do
     taker_utxo_idxs+=("$utxo_idx")
     ((utxo_idx++))
     if [ "$input_type" == "p2pkh" ]; then
-        tx_size=$(( $tx_size + $TX_P2PKH_IN_SIZE ))
+        tx_vsize=$(( $tx_vsize + $TX_P2PKH_IN_SIZE ))
         taker_amount=$(bc_float_calc "$taker_amount + $TX_P2PKH_IN_SIZE * $fee * 0.001")
     else
-        tx_size=$(( $tx_size + $TX_P2WSH_IN_SIZE ))
-        taker_amount=$(bc_float_calc "$taker_amount + $TX_P2WSH_IN_SIZE * $fee * 0.001")
+        additional_tx_vsize=$(( $tx_vsize + $TX_P2WSH_IN_SIZE * 3 + $TX_P2WSH_WITNESS_SIZE ))
+        additional_tx_vsize=$(( ($additional_tx_vsize + 1) / 4 ))
+        tx_vsize=$(( $tx_vsize + $additional_tx_vsize ))
+        taker_amount=$(bc_float_calc "$taker_amount + $additional_tx_vsize * $fee * 0.001")
     fi
 done
 
@@ -212,14 +232,11 @@ if is_btc_gte "$taker_amount" "$current_mixdepth_inputs_sum"; then
     exit 1
 fi
 
-if [ "$input_type" == "p2sh" ]; then
-    taker_change_outputs+=("$(getnewaddress_p2wsh)")
+if [ "$input_type" == "p2wsh" ]; then
     taker_change_outputs+=("$(getnewaddress_p2wsh)")
 else
     taker_change_outputs+=("$(getnewaddress_p2pkh)")
-    taker_change_outputs+=("$(getnewaddress_p2pkh)")
 fi
-taker_change_amounts+=("$amount")
 taker_change_amounts+=("$(bc_float_calc "$current_mixdepth_inputs_sum - $taker_amount")")
 
 echo "Calculated taker outputs:"
@@ -227,8 +244,8 @@ for i in $(seq 0 $(( ${#taker_change_amounts[@]} - 1 ))); do
     echo "$i: ${taker_change_amounts[$i]} ${taker_change_outputs[$i]}"
 done
 
-echo "tx_size = $tx_size"
-echo "TX fee: $(bc_float_calc "$tx_size * $fee * 0.001")"
+echo "tx_vsize = $tx_vsize"
+echo "Calculated TX fee: $(bc_float_calc "$tx_vsize * $fee * 0.001")"
 
 # DO TX
 
@@ -249,12 +266,15 @@ echo "rawtx_inputs: $rawtx_inputs"
 
 rawtx_outputs="{"
 needs_comma=0
-for i in $(seq 0 $(( ${#maker_change_amounts[@]} - 1 ))); do
+for i in $(seq 0 $(( ${#recipients[@]} - 1 ))); do
     if [ "$needs_comma" == "1" ]; then
         rawtx_outputs="$rawtx_outputs,"
     fi
-    rawtx_outputs="$rawtx_outputs\"${maker_change_outputs[$i]}\":\"${maker_change_amounts[$i]}\""
+    rawtx_outputs="$rawtx_outputs\"${recipients[$i]}\":\"$amount\""
     needs_comma=1
+done
+for i in $(seq 0 $(( ${#maker_change_amounts[@]} - 1 ))); do
+    rawtx_outputs="$rawtx_outputs,\"${maker_change_outputs[$i]}\":\"${maker_change_amounts[$i]}\""
 done
 for i in $(seq 0 $(( ${#taker_change_amounts[@]} - 1 ))); do
     rawtx_outputs="$rawtx_outputs,\"${taker_change_outputs[$i]}\":\"${taker_change_amounts[$i]}\""

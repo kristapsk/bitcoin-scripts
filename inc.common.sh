@@ -13,11 +13,16 @@ done
 bitcoin_cli="$bitcoin_cli$bitcoin_cli_options"
 
 # Some constants
+# We assume no more than 253 TX inputs or outputs
+TX_INPUTS_MAX=253
+TX_OUTPUTS_MAX=253
 TX_FIXED_SIZE=10
+TX_SEGWIT_FIXED_SIZE=12
 TX_P2PKH_IN_SIZE=148
 TX_P2PKH_OUT_SIZE=34
-TX_P2WSH_IN_SIZE=104
-TX_P2SH_OUT_SIZE=32
+TX_P2WSH_IN_SIZE=41
+TX_P2WSH_WITNESS_SIZE=109
+TX_P2SH_OUT_SIZE=34
 
 # Common useful functions
 
@@ -44,6 +49,11 @@ function is_p2pkh_bitcoin_address()
 function is_p2sh_bitcoin_address()
 {
     [[ ${1:0:1} =~ ^[23] ]]
+}
+
+function is_p2wsh_bitcoin_address()
+{
+    is_p2sh_bitcoin_address
 }
 
 function getnewaddress_p2pkh()
