@@ -50,23 +50,23 @@ function getnewaddress_p2pkh()
 {
     address=$(call_bitcoin_cli getnewaddress)
     if ! is_p2pkh_bitcoin_address $address; then
-		echo "FATAL: getnewaddress returns non-P2PKH address!"
-		exit 1
-	fi
-	echo "$address"
+        echo "FATAL: getnewaddress returns non-P2PKH address!"
+        exit 1
+    fi
+    echo "$address"
 }
 
 function getnewaddress_p2wsh()
 {
-	address=$(call_bitcoin_cli getnewaddress)
-	if is_p2pkh_bitcoin_address $address; then
-		address=$(call_bitcoin_cli addwitnessaddress $address)
-	fi
-	if ! is_p2sh_bitcoin_address $address; then
-		echo "FATAL: don't know how to generate P2WSH address!"
-		exit 1
-	fi
-	echo "$address"
+    address=$(call_bitcoin_cli getnewaddress)
+    if is_p2pkh_bitcoin_address $address; then
+        address=$(call_bitcoin_cli addwitnessaddress $address)
+    fi
+    if ! is_p2sh_bitcoin_address $address; then
+        echo "FATAL: don't know how to generate P2WSH address!"
+        exit 1
+    fi
+    echo "$address"
 }
 
 # BTC amounts - is "$1" greater than or equal to "#2"
