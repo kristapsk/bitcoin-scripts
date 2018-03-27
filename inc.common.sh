@@ -53,7 +53,8 @@ function is_p2sh_bitcoin_address()
 
 function is_p2wsh_bitcoin_address()
 {
-    is_p2sh_bitcoin_address
+    #is_p2sh_bitcoin_address
+    [[ ${1:0:1} =~ ^[23] ]]
 }
 
 function getnewaddress_p2pkh()

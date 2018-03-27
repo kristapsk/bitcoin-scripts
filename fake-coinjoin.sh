@@ -181,15 +181,14 @@ tx_vsize=$(( $tx_vsize + $p2sh_recipient_count * $TX_P2SH_OUT_SIZE ))
 if [ "$input_type" == "p2pkh" ]; then
     tx_vsize=$(( $tx_vsize + $TX_FIXED_SIZE ))
     tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2PKH_IN_SIZE ))
-    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2PKH_IN_SIZE ))
+    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2PKH_OUT_SIZE ))
 else
     tx_vsize=$(( $tx_vsize * 4 ))
     tx_vsize=$(( $tx_vsize + $TX_FIXED_SIZE * 3 + $TX_SEGWIT_FIXED_SIZE ))
-    # P2WSH inputs
-    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2WSH_IN_SIZE * 3 ))
-    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * ($TX_P2WSH_IN_SIZE + $TX_P2WSH_WITNESS_SIZE) ))
-    # P2SH outputs
-    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * ($TX_P2WSH_IN_SIZE + $TX_P2WSH_WITNESS_SIZE) ))
+    # P2WSH maker inputs
+    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * ( $TX_P2WSH_IN_SIZE * 4 + $TX_P2WSH_WITNESS_SIZE * 3 ) ))
+    # P2SH maker change outputs (recipient outputs already calculated above)
+    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2SH_OUT_SIZE * 4 ))
     # real size
     tx_vsize=$(( ($tx_vsize + 1) / 4 ))
 fi
@@ -215,7 +214,7 @@ do
         tx_vsize=$(( $tx_vsize + $TX_P2PKH_IN_SIZE ))
         taker_amount=$(bc_float_calc "$taker_amount + $TX_P2PKH_IN_SIZE * $fee * 0.001")
     else
-        additional_tx_vsize=$(( $tx_vsize + $TX_P2WSH_IN_SIZE * 3 + $TX_P2WSH_WITNESS_SIZE ))
+        additional_tx_vsize=$(( $TX_P2WSH_IN_SIZE * 4 + $TX_P2WSH_WITNESS_SIZE * 3 ))
         additional_tx_vsize=$(( ($additional_tx_vsize + 1) / 4 ))
         tx_vsize=$(( $tx_vsize + $additional_tx_vsize ))
         taker_amount=$(bc_float_calc "$taker_amount + $additional_tx_vsize * $fee * 0.001")
@@ -232,11 +231,13 @@ if is_btc_gte "$taker_amount" "$current_mixdepth_inputs_sum"; then
     exit 1
 fi
 
-if [ "$input_type" == "p2wsh" ]; then
-    taker_change_outputs+=("$(getnewaddress_p2wsh)")
+taker_change_outputs+=("$(eval "getnewaddress_$input_type")")
+if [ "$input_type" == "p2pkh" ]; then
+    tx_vsize=$(( $tx_vsize + $TX_P2KH_OUT_SIZE ))
 else
-    taker_change_outputs+=("$(getnewaddress_p2pkh)")
+    tx_vsize=$(( $tx_vsize + $TX_P2SH_OUT_SIZE ))
 fi
+
 taker_change_amounts+=("$(bc_float_calc "$current_mixdepth_inputs_sum - $taker_amount")")
 
 echo "Calculated taker outputs:"
