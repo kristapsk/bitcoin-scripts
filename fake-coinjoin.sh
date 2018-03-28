@@ -15,8 +15,6 @@ tx_fees=3
 absurd_fee_per_kb=150000
 # Minimum number of confirmations for UTXO's to be usable
 taker_utxo_age=5
-# Minimum amount for UTXO's to be usable (percentage from send amount)
-taker_utxo_amtpercent=20
 
 # End of configs
 
@@ -24,7 +22,6 @@ taker_utxo_amtpercent=20
 amount=$(echo "$1" | btc_amount_format)
 shift
 
-min_utxo_amount=$(bc_float_calc "$amount * $taker_utxo_amtpercent / 100")
 fee=$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)
 if [ "$fee" == "" ]; then
     echo "estimatesmartfee failed"
@@ -90,8 +87,7 @@ utxo_amounts_filtered=()
 for i in $(seq 0 $(( ${#utxo_addresses[@]} - 1 ))); do
     if \
         eval "is_${input_type}_bitcoin_address ${utxo_addresses[$i]}" && \
-        grep -qsv "${utxo_addresses[$i]}" <<< "$utxo_reused_addresses" && \
-        is_btc_gte "${utxo_amounts[$i]}" "$min_utxo_amount";
+        grep -qsv "${utxo_addresses[$i]}" <<< "$utxo_reused_addresses"
     then
         utxo_txids_filtered+=("${utxo_txids[$i]}")
         utxo_vouts_filtered+=("${utxo_vouts[$i]}")
