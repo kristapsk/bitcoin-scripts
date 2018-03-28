@@ -244,37 +244,61 @@ done
 echo "tx_vsize = $tx_vsize"
 echo "Calculated TX fee: $(bc_float_calc "$tx_vsize * $fee * 0.001")"
 
+# Join all inputs and outputs together so we can randomize order
+
+input_utxo_txids=()
+input_utxo_vouts=()
+output_addresses=()
+output_amounts=()
+
+for i in $(seq 0 $(( ${#maker_utxo_idxs[@]} - 1 ))); do
+    input_utxo_txids+=("${utxo_txids_filtered[${maker_utxo_idxs[$i]}]}")
+    input_utxo_vouts+=("${utxo_vouts_filtered[${maker_utxo_idxs[$i]}]}")
+done
+for i in $(seq 0 $(( ${#taker_utxo_idxs[@]} - 1 ))); do
+    input_utxo_txids+=("${utxo_txids_filtered[${taker_utxo_idxs[$i]}]}")
+    input_utxo_vouts+=("${utxo_vouts_filtered[${taker_utxo_idxs[$i]}]}")
+done
+
+for i in $(seq 0 $(( ${#recipients[@]} - 1 ))); do
+    output_addresses+=("${recipients[$i]}")
+    output_amounts+=("$amount")
+done
+for i in $(seq 0 $(( ${#maker_change_amounts[@]} - 1 ))); do
+    output_addresses+=("${maker_change_outputs[$i]}")
+    output_amounts+=("${maker_change_amounts[$i]}")
+done
+for i in $(seq 0 $(( ${#taker_change_amounts[@]} - 1 ))); do
+    output_addresses+=("${taker_change_outputs[$i]}")
+    output_amounts+=("${taker_change_amounts[$i]}")
+done
+
+# Randomize order
+input_it=$(seq 0 $(( ${#input_utxo_txids[@]} - 1 )) | shuf)
+output_it=$(seq 0 $(( ${#output_addresses[@]} - 1 )) | shuf)
+
 # DO TX
 
 rawtx_inputs="["
 needs_comma=0
-for i in $(seq 0 $(( ${#maker_utxo_idxs[@]} - 1 ))); do
+for i in $input_it; do
     if [ "$needs_comma" == "1" ]; then
         rawtx_inputs="$rawtx_inputs,"
     fi
-    rawtx_inputs="$rawtx_inputs{\"txid\":\"${utxo_txids_filtered[${maker_utxo_idxs[$i]}]}\",\"vout\":${utxo_vouts_filtered[${maker_utxo_idxs[$i]}]}}"
+    rawtx_inputs="$rawtx_inputs{\"txid\":\"${input_utxo_txids[$i]}\",\"vout\":${input_utxo_vouts[$i]}}"
     needs_comma=1
-done
-for i in $(seq 0 $(( ${#taker_utxo_idxs[@]} - 1 ))); do
-    rawtx_inputs="$rawtx_inputs,{\"txid\":\"${utxo_txids_filtered[${taker_utxo_idxs[$i]}]}\",\"vout\":${utxo_vouts_filtered[${taker_utxo_idxs[$i]}]}}"
 done
 rawtx_inputs="$rawtx_inputs]"
 echo "rawtx_inputs: $rawtx_inputs"
 
 rawtx_outputs="{"
 needs_comma=0
-for i in $(seq 0 $(( ${#recipients[@]} - 1 ))); do
+for i in $output_it; do
     if [ "$needs_comma" == "1" ]; then
         rawtx_outputs="$rawtx_outputs,"
     fi
-    rawtx_outputs="$rawtx_outputs\"${recipients[$i]}\":\"$amount\""
+    rawtx_outputs="$rawtx_outputs\"${output_addresses[$i]}\":\"${output_amounts[$i]}\""
     needs_comma=1
-done
-for i in $(seq 0 $(( ${#maker_change_amounts[@]} - 1 ))); do
-    rawtx_outputs="$rawtx_outputs,\"${maker_change_outputs[$i]}\":\"${maker_change_amounts[$i]}\""
-done
-for i in $(seq 0 $(( ${#taker_change_amounts[@]} - 1 ))); do
-    rawtx_outputs="$rawtx_outputs,\"${taker_change_outputs[$i]}\":\"${taker_change_amounts[$i]}\""
 done
 rawtx_outputs="$rawtx_outputs}"
 echo "rawtx_outputs: $rawtx_outputs"
