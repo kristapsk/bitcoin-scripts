@@ -229,7 +229,7 @@ fi
 
 taker_change_outputs+=("$(eval "getnewaddress_$input_type")")
 if [ "$input_type" == "p2pkh" ]; then
-    tx_vsize=$(( $tx_vsize + $TX_P2KH_OUT_SIZE ))
+    tx_vsize=$(( $tx_vsize + $TX_P2PKH_OUT_SIZE ))
 else
     tx_vsize=$(( $tx_vsize + $TX_P2SH_OUT_SIZE ))
 fi
