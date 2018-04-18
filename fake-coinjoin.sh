@@ -69,7 +69,7 @@ fi
 echo "Recipients: ${recipients[@]}"
 echo "input_type: $input_type"
 
-utxo="$(call_bitcoin_cli listunspent $taker_utxo_age 999999)"
+utxo="$(call_bitcoin_cli listunspent $taker_utxo_age 999999 '[]' false)"
 readarray -t utxo_txids < <( echo "$utxo" | jq -r ".[].txid" )
 readarray -t utxo_vouts < <( echo "$utxo" | jq -r ".[].vout" )
 readarray -t utxo_addresses < <( echo "$utxo" | jq -r ".[].address" )
