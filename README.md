@@ -2,7 +2,7 @@
 
 Various shell scripts, mainly to be used together with [Bitcoin Core](https://github.com/bitcoin/bitcoin) (bitcoind or bitcoin-qt) wallet.
 
-Dependencies: `bash`, `bitcoin-cli`, `awk`, `bc`, [`jq`](https://github.com/stedolan/jq), `sed`.
+Dependencies: `bash`, `bitcoin-cli` (v0.15 or newer), `awk`, `bc`, [`jq`](https://github.com/stedolan/jq), `sed`.
 
 Scripts use Bitcoin JSON-RPC API, so it must be enabled in `bitcoin.conf` (`server=1`, `rpcuser=` and `rpcpassword=` settings).
 
