@@ -11,10 +11,13 @@ fi
 
 # Estimated blocks to confirm when calculating TX fees
 tx_fees=3
-# Abort if TX fee per KB is above this number
+# Abort if TX fee per KB is above this number (satoshis)
 absurd_fee_per_kb=150000
 # Minimum number of confirmations for UTXO's to be usable
 taker_utxo_age=5
+
+# Dust threshold in satoshis, don't create smaller outputs
+DUST_THRESHOLD=27300
 
 # End of configs
 
@@ -77,7 +80,6 @@ readarray -t utxo_amounts < <( echo "$utxo" | jq_btc_float ".[].amount" )
 
 # Filter out unwanted input address types
 # Also ignore UTXO's with address reuse, JoinMarket normally don't have them
-# And check amounts to be above taker_utxo_amtpercent
 utxo_reused_addresses="$(printf '%s ' "${utxo_addresses[@]}" | \
     awk '!($0 in seen){seen[$0];next} 1')"
 utxo_txids_filtered=()
@@ -126,17 +128,19 @@ utxo_idx=0
 maker_change_outputs=()
 maker_change_amounts=()
 total_maker_fees=0
+# minimum taker amount must be above amount + dust
+minimum_taker_amount="$(bc_float_calc "$amount + ($DUST_THRESHOLD * 0.00000001) + 0.00000001")"
 for i in $(seq 0 $(( $mixdepth - 2 ))); do
     current_mixdepth_inputs_sum=0
     while
         (( $utxo_idx < ${#utxo_addresses_filtered[@]} )) && \
-        is_btc_gte "$amount" "$current_mixdepth_inputs_sum";
+        is_btc_gte "$minimum_taker_amount" "$current_mixdepth_inputs_sum";
     do
         current_mixdepth_inputs_sum=$(bc_float_calc "$current_mixdepth_inputs_sum + ${utxo_amounts_filtered[$utxo_idx]}")
         maker_utxo_idxs+=("$utxo_idx")
         ((utxo_idx++))
     done
-    if ! is_btc_gte "$amount" "$current_mixdepth_inputs_sum"; then
+    if ! is_btc_gte "$minimum_taker_amount" "$current_mixdepth_inputs_sum"; then
         # Add some simple random "maker" fee for now (800 .. 1200)
         makerfee="$(bc_float_calc "$(( $RANDOM % 400 + 800 )) * 0.00000001")"
         if [ "$input_type" == "p2wsh" ]; then
@@ -159,7 +163,7 @@ for i in $(seq 0 $(( ${#maker_change_amounts[@]} - 1 ))); do
     echo "$i: ${maker_change_amounts[$i]} ${maker_change_outputs[$i]}"
 done
 
-if is_btc_gte "$amount" "$current_mixdepth_inputs_sum"; then
+if is_btc_gte "$minimum_taker_amount" "$current_mixdepth_inputs_sum"; then
     echoerr "Not enough good inputs, aborting."
     exit 1
 fi
@@ -197,8 +201,6 @@ echo "taker_amount = $taker_amount"
 
 taker_utxo_idxs=()
 current_mixdepth_inputs_sum=0
-taker_change_outputs=()
-taker_change_amounts=()
 while
     (( $utxo_idx < ${#utxo_addresses_filtered[@]} )) && \
     is_btc_gte "$taker_amount" "$current_mixdepth_inputs_sum";
@@ -227,19 +229,25 @@ if is_btc_gte "$taker_amount" "$current_mixdepth_inputs_sum"; then
     exit 1
 fi
 
-taker_change_outputs+=("$(eval "getnewaddress_$input_type")")
+taker_change_amount="$(bc_float_calc "$current_mixdepth_inputs_sum - $taker_amount")"
 if [ "$input_type" == "p2pkh" ]; then
-    tx_vsize=$(( $tx_vsize + $TX_P2PKH_OUT_SIZE ))
+    taker_change_amount="$(bc_float_calc "$taker_change_amount - ($TX_P2PKH_OUT_SIZE * 0.00000001)")"
 else
-    tx_vsize=$(( $tx_vsize + $TX_P2SH_OUT_SIZE ))
+    taker_change_amount="$(bc_float_calc "$taker_change_amount - ($TX_P2SH_OUT_SIZE * 0.00000001)")"
+fi
+if is_btc_gte "$taker_change_amount" "$(bc_float_calc "$DUST_THRESHOLD * 0.00000001")"; then
+    taker_change_output="$(eval "getnewaddress_$input_type")"
+    if [ "$input_type" == "p2pkh" ]; then
+        tx_vsize=$(( $tx_vsize + $TX_P2PKH_OUT_SIZE ))
+    else
+        tx_vsize=$(( $tx_vsize + $TX_P2SH_OUT_SIZE ))
+    fi
+else
+    echo "Don't create dust amount taker change output, add to the fees."
 fi
 
-taker_change_amounts+=("$(bc_float_calc "$current_mixdepth_inputs_sum - $taker_amount")")
-
 echo "Calculated taker outputs:"
-for i in $(seq 0 $(( ${#taker_change_amounts[@]} - 1 ))); do
-    echo "$i: ${taker_change_amounts[$i]} ${taker_change_outputs[$i]}"
-done
+echo "0: $taker_change_amount $taker_change_outputs"
 
 echo "tx_vsize = $tx_vsize"
 echo "Calculated TX fee: $(bc_float_calc "$tx_vsize * $fee * 0.001")"
@@ -268,10 +276,8 @@ for i in $(seq 0 $(( ${#maker_change_amounts[@]} - 1 ))); do
     output_addresses+=("${maker_change_outputs[$i]}")
     output_amounts+=("${maker_change_amounts[$i]}")
 done
-for i in $(seq 0 $(( ${#taker_change_amounts[@]} - 1 ))); do
-    output_addresses+=("${taker_change_outputs[$i]}")
-    output_amounts+=("${taker_change_amounts[$i]}")
-done
+output_addresses+=("$taker_change_output")
+output_amounts+=("$taker_change_amount")
 
 # Randomize order
 input_it=$(seq 0 $(( ${#input_utxo_txids[@]} - 1 )) | shuf)
@@ -304,7 +310,8 @@ rawtx_outputs="$rawtx_outputs}"
 echo "rawtx_outputs: $rawtx_outputs"
 
 rawtx=$(call_bitcoin_cli createrawtransaction "$rawtx_inputs" "$rawtx_outputs")
-echo "$(call_bitcoin_cli decoderawtransaction "$rawtx")"
+echo "Raw transaction: $rawtx"
+call_bitcoin_cli decoderawtransaction "$rawtx"
 
 read -p "Sign and broadcast this transaction? " -n 1 -r
 echo
