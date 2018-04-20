@@ -28,7 +28,7 @@ TX_P2SH_OUT_SIZE=34
 
 function echoerr()
 {
-	(>&2 echo "$@")
+    (>&2 echo "$@")
 }
 
 function btc_amount_format()
