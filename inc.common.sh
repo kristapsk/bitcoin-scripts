@@ -26,6 +26,11 @@ TX_P2SH_OUT_SIZE=34
 
 # Common useful functions
 
+function echoerr()
+{
+	(>&2 echo "$@")
+}
+
 function btc_amount_format()
 {
     awk '{ print sprintf("%.8f", $1); }'
@@ -61,8 +66,8 @@ function getnewaddress_p2pkh()
 {
     address=$(call_bitcoin_cli getnewaddress)
     if ! is_p2pkh_bitcoin_address $address; then
-        echo "FATAL: getnewaddress returns non-P2PKH address!"
-        exit 1
+        echoerr "FATAL: getnewaddress returns non-P2PKH address!"
+        kill $$
     fi
     echo "$address"
 }
@@ -74,8 +79,8 @@ function getnewaddress_p2wsh()
         address=$(call_bitcoin_cli addwitnessaddress $address)
     fi
     if ! is_p2sh_bitcoin_address $address; then
-        echo "FATAL: don't know how to generate P2WSH address!"
-        exit 1
+        echoerr "FATAL: don't know how to generate P2WSH address!"
+        kill $$
     fi
     echo "$address"
 }

@@ -10,7 +10,7 @@ fi
 amount=$1
 address=$2
 if ! is_valid_bitcoin_address $address; then
-    echo "Invalid Bitcoin address $address"
+    echoerr "Invalid Bitcoin address $address"
     exit 1
 fi
 
@@ -71,8 +71,8 @@ while read value; do
     ((idx++))
 done < <(echo "$rawtx" | jq_btc_float ".vout[].value")
 if [ "$vout_idx" == "" ]; then
-    echo "$rawtx"
-    echo "FATAL: Can't find the right vout in the first transaction, please fill a bug report!"
+    echoerr "$rawtx"
+    echoerr "FATAL: Can't find the right vout in the first transaction, please fill a bug report!"
     exit 1
 fi
 

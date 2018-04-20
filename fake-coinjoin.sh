@@ -24,12 +24,12 @@ shift
 
 fee=$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)
 if [ "$fee" == "" ]; then
-    echo "estimatesmartfee failed"
+    echoerr "estimatesmartfee failed"
     exit 1
 fi
 if is_btc_gte "$fee" "$(bc_float_calc "$absurd_fee_per_kb * 0.00000001")"; then
-    echo -n "Estimated fee per KB ($fee) is greater than absurd value: "
-    echo "$(bc_float_calc "$absurd_fee_per_kb * 0.00000001"), quitting."
+    echoerr -n "Estimated fee per KB ($fee) is greater than absurd value: "
+    echoerr "$(bc_float_calc "$absurd_fee_per_kb * 0.00000001"), quitting."
     exit 1
 fi
 echo "Using fee $fee per KB"
@@ -41,7 +41,7 @@ p2sh_recipient_count=0
 while (( ${#} > 0 )); do
     address=$1
     if ! is_valid_bitcoin_address $address; then
-        echo "Invalid address $address"
+        echoerr "Invalid address $address"
         exit 1
     fi
     recipients+=("$address")
@@ -54,12 +54,12 @@ while (( ${#} > 0 )); do
 done
 
 if (( $p2pkh_recipient_count > 1 )) && (( $p2sh_recipient_count > 1 )); then
-    echo "Only one recipient can be a different kind! (P2PKH or P2SH)"
+    echoerr "Only one recipient can be a different kind! (P2PKH or P2SH)"
     exit 2
 fi
 
 if (( ${#recipients[@]} > $(( $TX_OUTPUTS_MAX / 2 )) )); then
-    echo "More than $(( $TX_OUTPUTS_MAX / 2 )) recipients aren't supported!"
+    echoerr "More than $(( $TX_OUTPUTS_MAX / 2 )) recipients aren't supported!"
     exit 3
 fi
 
@@ -160,7 +160,7 @@ for i in $(seq 0 $(( ${#maker_change_amounts[@]} - 1 ))); do
 done
 
 if is_btc_gte "$amount" "$current_mixdepth_inputs_sum"; then
-    echo "Not enough good inputs, aborting."
+    echoerr "Not enough good inputs, aborting."
     exit 1
 fi
 
@@ -223,7 +223,7 @@ for i in $(seq 0 $(( ${#taker_utxo_idxs[@]} - 1 ))); do
 done
 
 if is_btc_gte "$taker_amount" "$current_mixdepth_inputs_sum"; then
-    echo "Not enough good inputs, aborting."
+    echoerr "Not enough good inputs, aborting."
     exit 1
 fi
 
