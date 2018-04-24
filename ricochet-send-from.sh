@@ -76,10 +76,11 @@ if ! [[ $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 ricochet_addresses=()
+# add destination first, we will iterate in reverse order (see tac in for below)
+ricochet_addresses+=("$destination_address")
 for i in $(seq 1 $(( $hops - 1 ))); do
     ricochet_addresses+=("$(call_bitcoin_cli getnewaddress)")
 done
-ricochet_addresses+=("$destination_address")
 
 source_address_type=$(get_bitcoin_address_type "$source_address")
 ricochet_address_type=$(get_bitcoin_address_type "${ricochet_addresses[0]}")
@@ -87,7 +88,7 @@ destination_address_type=$(get_bitcoin_address_type "$destination_address")
 
 #echo "Richochet addresses: ${ricochet_addresses[@]}"
 
-echo "(wallet) -> ${ricochet_addresses[0]} ($send_amount)"
+echo "$source_address -> ${ricochet_addresses[$(( $hops - 1 ))]} ($send_amount)"
 
 # Calculate TX fee and build first transaction
 if [ "$source_address_type" == "p2pkh" ]; then
@@ -114,7 +115,7 @@ for i in $(seq 0 $(( ${#utxo_txids_filtered[@]} - 1 )) ); do
 done
 rawtx_inputs="$rawtx_inputs]"
 send_amount=$(bc_float_calc "$send_amount - $(bc_float_calc "$tx_vsize * $fee * 0.001")")
-rawtx=$(call_bitcoin_cli createrawtransaction "$rawtx_inputs" "{\"${ricochet_addresses[0]}\":$send_amount}")
+rawtx=$(call_bitcoin_cli createrawtransaction "$rawtx_inputs" "{\"${ricochet_addresses[$(( $hops - 1 ))]}\":$send_amount}")
 signedtx=$(call_bitcoin_cli signrawtransaction "$rawtx" | jq -r ".hex")
 txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
 
@@ -145,8 +146,8 @@ for i in $(seq 1 $(( $hops - 1 )) | tac); do
     fi
 
     send_amount=$(bc_float_calc "$send_amount - $(bc_float_calc "$tx_vsize * $fee * 0.001")")
-    echo "${ricochet_addresses[$(( $i - 1 ))]} -> ${ricochet_addresses[$i]} ($send_amount)"
-    rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$txid\",\"vout\":0}]" "{\"${ricochet_addresses[$i]}\":$send_amount}")
+    echo "${ricochet_addresses[$i]} -> ${ricochet_addresses[$(( $i - 1 ))]} ($send_amount)"
+    rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$txid\",\"vout\":0}]" "{\"${ricochet_addresses[$(( $i - 1 ))]}\":$send_amount}")
     signedtx=$(call_bitcoin_cli signrawtransaction "$rawtx" | jq -r ".hex")
     txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
 done
