@@ -39,8 +39,10 @@ fi
 
 # Force minimum required fee
 fee=$(echo "$fee" | btc_amount_format)
-if [ "$fee" == "0.00000000" ]; then
-    fee=0.00001000
+minrelayfee=$(call_bitcoin_cli getnetworkinfo | jq_btc_float ".relayfee")
+if is_btc_lt "$fee" "$minrelayfee"; then
+    echo "Fee $fee is below minimum relay fee, raising to $minrelayfee"
+    fee=$minrelayfee
 fi
 
 utxo="$(call_bitcoin_cli listunspent 0 999999 '[]' false)"

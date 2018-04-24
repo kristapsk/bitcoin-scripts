@@ -36,8 +36,10 @@ fi
 
 # Force minimum required fee
 fee=$(echo "$fee" | btc_amount_format)
-if [ "$fee" == "0.00000000" ]; then
-    fee=0.00001000
+minrelayfee=$(call_bitcoin_cli getnetworkinfo | jq_btc_float ".relayfee")
+if is_btc_lt "$fee" "$minrelayfee"; then
+    echo "Fee $fee is below minimum relay fee, raising to $minrelayfee"
+    fee=$minrelayfee
 fi
 
 echo "Ricocheting $amount BTC to $address via $hops hops using $fee fee per KB"
@@ -57,7 +59,7 @@ send_amount=$(bc_float_calc "$amount + $ricochet_fees")
 #echo "Richochet addresses: ${ricochet_addresses[@]}"
 
 echo "(wallet) -> ${ricochet_addresses[0]} ($send_amount)"
-call_bitcoin_cli settxfee $fee
+call_bitcoin_cli settxfee $fee > /dev/null
 txid=$(call_bitcoin_cli sendtoaddress ${ricochet_addresses[0]} $send_amount)
 rawtx=$(show_tx_by_id $txid)
 #echo "$rawtx"

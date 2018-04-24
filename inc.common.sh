@@ -118,13 +118,22 @@ function getnewaddress_p2wsh()
     echo "$address"
 }
 
-# BTC amounts - is "$1" greater than or equal to "#2"
+# BTC amounts - is "$1" greater than or equal to "$2"
 # Both BTC and satoshi amounts will actually work here
 function is_btc_gte()
 {
     (( \
         $(echo "$1" | btc_amount_format | tr -d '.' | sed 's/^0*//' | sed 's/^$/0/') \
             >= \
+        $(echo "$2" | btc_amount_format | tr -d '.' | sed 's/^0*//' | sed 's/^$/0/') \
+    ))
+}
+# is "$1" less than "$2"
+function is_btc_lt()
+{
+    (( \
+        $(echo "$1" | btc_amount_format | tr -d '.' | sed 's/^0*//' | sed 's/^$/0/') \
+            < \
         $(echo "$2" | btc_amount_format | tr -d '.' | sed 's/^0*//' | sed 's/^$/0/') \
     ))
 }

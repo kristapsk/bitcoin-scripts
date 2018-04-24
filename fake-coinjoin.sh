@@ -30,6 +30,11 @@ if [ "$fee" == "" ]; then
     echoerr "estimatesmartfee failed"
     exit 1
 fi
+minrelayfee=$(call_bitcoin_cli getnetworkinfo | jq_btc_float ".relayfee")
+if is_btc_lt "$fee" "$minrelayfee"; then
+    echo "Fee $fee is below minimum relay fee, raising to $minrelayfee"
+    fee=$minrelayfee
+fi
 if is_btc_gte "$fee" "$(bc_float_calc "$absurd_fee_per_kb * 0.00000001")"; then
     echoerr -n "Estimated fee per KB ($fee) is greater than absurd value: "
     echoerr "$(bc_float_calc "$absurd_fee_per_kb * 0.00000001"), quitting."
