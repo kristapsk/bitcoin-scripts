@@ -46,6 +46,11 @@ function call_bitcoin_cli()
     $bitcoin_cli "$@" || kill $$
 }
 
+function try_bitcoin_cli()
+{
+    $bitcoin_cli "$@" 2> /dev/null
+}
+
 function calc_tx_vsize()
 {
     p2pkh_in_count=$1
@@ -97,9 +102,12 @@ function get_bitcoin_address_type()
 
 function getnewaddress_p2pkh()
 {
-    address=$(call_bitcoin_cli getnewaddress)
+    address=$(try_bitcoin_cli getnewaddress "" "legacy")
+    if [ "$address" == "" ]; then
+        address=$(call_bitcoin_cli getnewaddress)
+    fi
     if ! is_p2pkh_bitcoin_address $address; then
-        echoerr "FATAL: getnewaddress returns non-P2PKH address!"
+        echoerr "FATAL: don't know how to generate P2PKH address!"
         kill $$
     fi
     echo "$address"
@@ -107,9 +115,12 @@ function getnewaddress_p2pkh()
 
 function getnewaddress_p2wsh()
 {
-    address=$(call_bitcoin_cli getnewaddress)
-    if is_p2pkh_bitcoin_address $address; then
-        address=$(call_bitcoin_cli addwitnessaddress $address)
+    address=$(try_bitcoin_cli getnewaddress "" "p2sh-segwit")
+    if [ "$address" == "" ]; then
+        address=$(call_bitcoin_cli getnewaddress)
+        if is_p2pkh_bitcoin_address $address; then
+            address=$(try_bitcoin_cli addwitnessaddress $address)
+        fi
     fi
     if ! is_p2sh_bitcoin_address $address; then
         echoerr "FATAL: don't know how to generate P2WSH address!"
