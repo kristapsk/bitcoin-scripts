@@ -91,12 +91,19 @@ function is_p2wsh_bitcoin_address()
     [[ ${1:0:1} =~ ^[23] ]]
 }
 
+function is_bech32_bitcoin_address()
+{
+    [[ ${1:0:3} =~ ^(bc|BC|tb|TB)1 ]]
+}
+
 function get_bitcoin_address_type()
 {
     if is_p2pkh_bitcoin_address "$1"; then
         echo "p2pkh"
     elif is_p2sh_bitcoin_address "$1"; then
         echo "p2sh"
+    elif is_bech32_bitcoin_address "$1"; then
+        echo "bech32"
     fi
 }
 
@@ -149,14 +156,13 @@ function is_btc_lt()
     ))
 }
 
-# Only P2PKH/P2SH supported for now, no bech32.
 function is_valid_bitcoin_address()
 {
     if [ "$testnet" == "1" ]; then
-        echo $1 | grep -qse '^[mn2][a-km-zA-HJ-NP-Z1-9]\{25,34\}$'
+        echo $1 | grep -qse '^\([mn2][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|tb1[a-z0-9]\{8,87\}\|TB1[A-Z0-9]\{8,87\}\)$'
         return $?
     else
-        echo $1 | grep -qse '^[13][a-km-zA-HJ-NP-Z1-9]\{25,34\}$'
+        echo $1 | grep -qse  '^\([13][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|bc1[a-z0-9]\{8,87\}\|BC1[A-Z0-9]\{8,87\}\)$'
         return $?
     fi
 }
