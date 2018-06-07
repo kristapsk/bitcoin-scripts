@@ -45,25 +45,16 @@ if is_btc_lt "$fee" "$minrelayfee"; then
     fee=$minrelayfee
 fi
 
-utxo="$(call_bitcoin_cli listunspent 0 999999 '[]' false)"
+utxo="$(call_bitcoin_cli listunspent 0 999999 "[\"$source_address\"]" false)"
 readarray -t utxo_txids < <( echo "$utxo" | jq -r ".[].txid" )
 readarray -t utxo_vouts < <( echo "$utxo" | jq -r ".[].vout" )
-readarray -t utxo_addresses < <( echo "$utxo" | jq -r ".[].address" )
 readarray -t utxo_amounts < <( echo "$utxo" | jq_btc_float ".[].amount" )
-
-# Find UTXO's belonging to source_address
-utxo_txids_filtered=()
-utxo_vouts_filtered=()
 send_amount=0
-for i in $(seq 0 $(( ${#utxo_addresses[@]} - 1 ))); do
-    if [ "${utxo_addresses[$i]}" == "$source_address" ]; then
-        utxo_txids_filtered+=("${utxo_txids[$i]}")
-        utxo_vouts_filtered+=("${utxo_vouts[$i]}")
-        send_amount=$(bc_float_calc "$send_amount + ${utxo_amounts[$i]}")
-    fi
+for i in $(seq 0 $(( ${#utxo_amounts[@]} - 1 ))); do
+    send_amount=$(bc_float_calc "$send_amount + ${utxo_amounts[$i]}")
 done
 
-if [ "${#utxo_txids_filtered[@]}" == "0" ]; then
+if [ "${#utxo_txids[@]}" == "0" ]; then
     echo "No matching inputs belonging to address $source_address"
     exit 2
 fi
@@ -95,24 +86,24 @@ echo "$source_address -> ${ricochet_addresses[$(( $hops - 1 ))]} ($send_amount)"
 # Calculate TX fee and build first transaction
 if [ "$source_address_type" == "p2pkh" ]; then
     if [ "$ricochet_address_type" == "p2pkh" ]; then
-        tx_vsize=$(calc_tx_vsize ${#utxo_txids_filtered[@]} 0 1 0)
+        tx_vsize=$(calc_tx_vsize ${#utxo_txids[@]} 0 1 0)
     else
-        tx_vsize=$(calc_tx_vsize ${#utxo_txids_filtered[@]} 0 0 1)
+        tx_vsize=$(calc_tx_vsize ${#utxo_txids[@]} 0 0 1)
     fi
 else
     if [ "$ricochet_address_type" == "p2pkh" ]; then
-        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids_filtered[@]} 1 0)
+        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 1 0)
     else
-        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids_filtered[@]} 0 1)
+        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 0 1)
     fi
 fi
 rawtx_inputs="["
 needs_comma=0
-for i in $(seq 0 $(( ${#utxo_txids_filtered[@]} - 1 )) ); do
+for i in $(seq 0 $(( ${#utxo_txids[@]} - 1 )) ); do
     if [ "$needs_comma" == "1" ]; then
         rawtx_inputs="$rawtx_inputs,"
     fi
-    rawtx_inputs="$rawtx_inputs{\"txid\":\"${utxo_txids_filtered[$i]}\",\"vout\":${utxo_vouts_filtered[$i]}}"
+    rawtx_inputs="$rawtx_inputs{\"txid\":\"${utxo_txids[$i]}\",\"vout\":${utxo_vouts[$i]}}"
     needs_comma=1
 done
 rawtx_inputs="$rawtx_inputs]"
