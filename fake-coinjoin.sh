@@ -321,12 +321,12 @@ read -p "Sign and broadcast this transaction? " -n 1 -r
 echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    signedtx=$(call_bitcoin_cli signrawtransaction "$rawtx" | jq -r ".hex")
     signres=$(call_bitcoin_cli signrawtransaction "$rawtx")
     if [ "$(echo "$signres" | jq '.complete')" != "true" ]; then
         echo "$signres"
         exit 1
     else
+        signedtx="$(echo "$signres" | jq -r ".hex")"
         txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
         echo "Sent transaction $txid"
     fi
