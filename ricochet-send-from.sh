@@ -76,7 +76,7 @@ for i in $(seq 1 $(( $hops - 1 ))); do
 done
 
 source_address_type=$(get_bitcoin_address_type "$source_address")
-ricochet_address_type=$(get_bitcoin_address_type "${ricochet_addresses[0]}")
+ricochet_address_type=$(get_bitcoin_address_type "${ricochet_addresses[1]}")
 destination_address_type=$(get_bitcoin_address_type "$destination_address")
 
 #echo "Richochet addresses: ${ricochet_addresses[@]}"

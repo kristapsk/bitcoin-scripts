@@ -15,6 +15,11 @@ tx_fees=3
 absurd_fee_per_kb=150000
 # Minimum number of confirmations for UTXO's to be usable
 taker_utxo_age=5
+# Coin selection ("merge") algorithm.
+# Not the same as JM algos currently.
+# "default" is a dumb coin selection, using listunspent order.
+# "greediest" is for rapid dust sweeping, ordering UTXO's from the smallest upwards.
+merge_algorithm=default
 
 # Dust threshold in satoshis, don't create smaller outputs
 DUST_THRESHOLD=27300
@@ -77,7 +82,16 @@ fi
 echo "Recipients: ${recipients[@]}"
 echo "input_type: $input_type"
 
+function select_greediest()
+{
+    grep -v '\[\|\]' | sed 's/},/}/g' | jq -s -c 'sort_by(.amount)'
+}
+
 utxo="$(call_bitcoin_cli listunspent $taker_utxo_age 999999 '[]' false)"
+if [ "$merge_algorithm" == "greediest" ]; then
+	utxo="$(echo "$utxo" | select_greediest)"
+fi
+
 readarray -t utxo_txids < <( echo "$utxo" | jq -r ".[].txid" )
 readarray -t utxo_vouts < <( echo "$utxo" | jq -r ".[].vout" )
 readarray -t utxo_addresses < <( echo "$utxo" | jq -r ".[].address" )
@@ -107,25 +121,13 @@ unset utxo_vouts
 unset utxo_addresses
 unset utxo_amounts
 
-printf '%s\n' "${utxo_addresses_filtered[@]}"
-printf '%s\n' "${utxo_amounts_filtered[@]}"
-echo "${#utxo_addresses_filtered[@]}"
-
-# Dumb coin selection for now
-# Just go through all the inputs, and for each recipient add them together
-# until total amount is send amount + dust threshold + some fees(?)
-# This could be improved in future, JoinMarket do better.
-# Also in the process we create change addresses for TX.
-# There we also check returned address type, does it match.
-# If P2PKH is returned but P2SH is required, try "addwitnessaddress".
+#printf '%s\n' "${utxo_addresses_filtered[@]}"
+#printf '%s\n' "${utxo_amounts_filtered[@]}"
+#echo "${#utxo_addresses_filtered[@]}"
 
 # Calculate fees, TX input/output bytes, etc here
 
 mixdepth=${#recipients[@]}
-
-# Simpler way
-# First destinations assume as makers
-# Last one is taker, pays all the fees
 
 # Select "maker" inputs
 maker_utxo_idxs=()
@@ -175,9 +177,6 @@ fi
 
 # Calculate fees
 # https://bitcoincore.org/en/segwit_wallet_dev/#transaction-fee-estimation
-# We do periodic division by 4 for SegWit TX's to calculate required input sizes,
-# not once at the end. This could end up with a little bit bigger TX fee than required,
-# due to rounding.
 
 # Recipients
 tx_vsize=$(( $p2pkh_recipient_count * $TX_P2PKH_OUT_SIZE ))
@@ -322,8 +321,14 @@ read -p "Sign and broadcast this transaction? " -n 1 -r
 echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    signedtx=$(call_bitcoin_cli signrawtransaction "$rawtx" | jq -r ".hex")
-    txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
-    echo "Sent transaction $txid"
+    signres=$(call_bitcoin_cli signrawtransaction "$rawtx")
+    if [ "$(echo "$signres" | jq '.complete')" != "true" ]; then
+        echo "$signres"
+        exit 1
+    else
+        signedtx="$(echo "$signres" | jq -r ".hex")"
+        txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
+        echo "Sent transaction $txid"
+    fi
 fi
 
