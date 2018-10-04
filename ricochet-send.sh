@@ -85,7 +85,7 @@ for i in $(seq 1 $(( $hops - 1 ))); do
     send_amount=$(bc_float_calc "$send_amount - $single_ricochet_tx_fee")
     echo "${ricochet_addresses[$(( $i - 1 ))]} -> ${ricochet_addresses[$i]} ($send_amount)"
     rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$txid\",\"vout\":$vout_idx}]" "{\"${ricochet_addresses[$i]}\":$send_amount}")
-    signedtx=$(call_bitcoin_cli signrawtransaction "$rawtx" | jq -r ".hex")
+    signedtx=$(signrawtransactionwithwallet "$rawtx")
     txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
     vout_idx=0
 done
