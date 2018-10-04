@@ -247,11 +247,13 @@ if is_btc_gte "$taker_change_amount" "$(bc_float_calc "$DUST_THRESHOLD * 0.00000
         tx_vsize=$(( $tx_vsize + $TX_P2SH_OUT_SIZE ))
     fi
 else
-    echo "Don't create dust amount taker change output, add to the fees."
+    echo "Not creating dust amount taker change output, adding to the fees."
 fi
 
-echo "Calculated taker outputs:"
-echo "0: $taker_change_amount $taker_change_outputs"
+if [ "$taker_change_output" != "" ]; then
+    echo "Calculated taker outputs:"
+    echo "0: $taker_change_amount $taker_change_output"
+fi
 
 echo "tx_vsize = $tx_vsize"
 echo "Calculated TX fee: $(bc_float_calc "$tx_vsize * $fee * 0.001")"
@@ -280,8 +282,10 @@ for i in $(seq 0 $(( ${#maker_change_amounts[@]} - 1 ))); do
     output_addresses+=("${maker_change_outputs[$i]}")
     output_amounts+=("${maker_change_amounts[$i]}")
 done
-output_addresses+=("$taker_change_output")
-output_amounts+=("$taker_change_amount")
+if [ "$taker_change_output" != "" ]; then
+    output_addresses+=("$taker_change_output")
+    output_amounts+=("$taker_change_amount")
+fi
 
 # Randomize order
 input_it=$(seq 0 $(( ${#input_utxo_txids[@]} - 1 )) | shuf)
