@@ -252,7 +252,7 @@ fi
 
 if [ "$taker_change_output" != "" ]; then
     echo "Calculated taker outputs:"
-    echo "0: $taker_change_amount $taker_change_outputs"
+    echo "0: $taker_change_amount $taker_change_output"
 fi
 
 echo "tx_vsize = $tx_vsize"
