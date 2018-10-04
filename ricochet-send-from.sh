@@ -109,7 +109,7 @@ done
 rawtx_inputs="$rawtx_inputs]"
 send_amount=$(bc_float_calc "$send_amount - $(bc_float_calc "$tx_vsize * $fee * 0.001")")
 rawtx=$(call_bitcoin_cli createrawtransaction "$rawtx_inputs" "{\"${ricochet_addresses[$(( $hops - 1 ))]}\":$send_amount}")
-signedtx=$(call_bitcoin_cli signrawtransaction "$rawtx" | jq -r ".hex")
+signedtx=$(signrawtransactionwithwallet "$rawtx")
 txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
 
 # Do the rest of the transactions
@@ -141,7 +141,7 @@ for i in $(seq 1 $(( $hops - 1 )) | tac); do
     send_amount=$(bc_float_calc "$send_amount - $(bc_float_calc "$tx_vsize * $fee * 0.001")")
     echo "${ricochet_addresses[$i]} -> ${ricochet_addresses[$(( $i - 1 ))]} ($send_amount)"
     rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$txid\",\"vout\":0}]" "{\"${ricochet_addresses[$(( $i - 1 ))]}\":$send_amount}")
-    signedtx=$(call_bitcoin_cli signrawtransaction "$rawtx" | jq -r ".hex")
+    signedtx=$(signrawtransactionwithwallet "$rawtx")
     txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
 done
 

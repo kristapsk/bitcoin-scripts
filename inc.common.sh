@@ -166,6 +166,19 @@ function jq_btc_float()
     jq "$1" | btc_amount_format
 }
 
+function signrawtransactionwithwallet()
+{
+    signedtx=$(try_bitcoin_cli signrawtransactionwithwallet "$1" | jq -r ".hex")
+    if [ "$signedtx" == "" ]; then
+        signedtx=$(try_bitcoin_cli signrawtransaction "$1" | jq -r ".hex")
+    fi
+    if [ "$signedtx" == "" ]; then
+        echoerr "FATAL: signing transaction with wallet failed. Is wallet locked?"
+        kill $$
+    fi
+    echo "$signedtx"
+}
+
 function show_tx_by_id()
 {
     call_bitcoin_cli decoderawtransaction \
