@@ -252,7 +252,7 @@ fi
 
 if [ "$taker_change_output" != "" ]; then
     echo "Calculated taker outputs:"
-    echo "0: $taker_change_amount $taker_change_outputs"
+    echo "0: $taker_change_amount $taker_change_output"
 fi
 
 echo "tx_vsize = $tx_vsize"
@@ -325,14 +325,8 @@ read -p "Sign and broadcast this transaction? " -n 1 -r
 echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    signres=$(call_bitcoin_cli signrawtransaction "$rawtx")
-    if [ "$(echo "$signres" | jq '.complete')" != "true" ]; then
-        echo "$signres"
-        exit 1
-    else
-        signedtx="$(echo "$signres" | jq -r ".hex")"
-        txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
-        echo "Sent transaction $txid"
-    fi
+    signedtx=$(signrawtransactionwithwallet "$rawtx")
+    txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
+    echo "Sent transaction $txid"
 fi
 
