@@ -20,8 +20,8 @@ TX_FIXED_SIZE=10
 TX_SEGWIT_FIXED_SIZE=12
 TX_P2PKH_IN_SIZE=148
 TX_P2PKH_OUT_SIZE=34
-TX_P2WSH_IN_SIZE=41
-TX_P2WSH_WITNESS_SIZE=109
+TX_P2SH_SEGWIT_IN_SIZE=41
+TX_P2SH_SEGWIT_WITNESS_SIZE=109
 TX_P2SH_OUT_SIZE=34
 
 # Common useful functions
@@ -54,11 +54,11 @@ function try_bitcoin_cli()
 function calc_tx_vsize()
 {
     p2pkh_in_count=$1
-    p2wsh_in_count=$2
+    p2sh_segwit_in_count=$2
     p2pkh_out_count=$3
     p2sh_out_count=$4
 
-    if [ "$p2wsh_in_count" == "0" ]; then
+    if [ "$p2sh_segwit_in_count" == "0" ]; then
         tx_size=$TX_FIXED_SIZE
         tx_size=$(( $tx_size + $p2pkh_in_count * $TX_P2PKH_IN_SIZE ))
         tx_size=$(( $tx_size + $p2pkh_out_count * $TX_P2PKH_OUT_SIZE ))
@@ -67,7 +67,7 @@ function calc_tx_vsize()
     else
         tx_vsize=$(( $TX_FIXED_SIZE * 3 + $TX_SEGWIT_FIXED_SIZE ))
         tx_vsize=$(( $tx_vsize + $p2pkh_in_count * $TX_P2PKH_IN_SIZE * 4 ))
-        tx_vsize=$(( $tx_vsize + $p2wsh_in_count * ($TX_P2WSH_IN_SIZE * 4 + $TX_P2WSH_WITNESS_SIZE * 3) ))
+        tx_vsize=$(( $tx_vsize + $p2sh_segwit_in_count * ($TX_P2SH_SEGWIT_IN_SIZE * 4 + $TX_P2SH_SEGWIT_WITNESS_SIZE * 3) ))
         tx_vsize=$(( $tx_vsize + $p2pkh_out_count * $TX_P2PKH_OUT_SIZE * 4 ))
         tx_vsize=$(( $tx_vsize + $p2sh_out_count * $TX_P2SH_OUT_SIZE * 4 ))
         tx_vsize=$(( ($tx_vsize + 1) / 4 ))
@@ -85,9 +85,8 @@ function is_p2sh_bitcoin_address()
     [[ ${1:0:1} =~ ^[23] ]]
 }
 
-function is_p2wsh_bitcoin_address()
+function is_p2sh_segwit_bitcoin_address()
 {
-    #is_p2sh_bitcoin_address
     [[ ${1:0:1} =~ ^[23] ]]
 }
 
@@ -120,7 +119,7 @@ function getnewaddress_p2pkh()
     echo "$address"
 }
 
-function getnewaddress_p2wsh()
+function getnewaddress_p2sh_segwit()
 {
     address=$(try_bitcoin_cli getnewaddress "" "p2sh-segwit")
     if [ "$address" == "" ]; then
@@ -130,7 +129,7 @@ function getnewaddress_p2wsh()
         fi
     fi
     if ! is_p2sh_bitcoin_address $address; then
-        echoerr "FATAL: don't know how to generate P2WSH address!"
+        echoerr "FATAL: don't know how to generate P2SH segwit address!"
         kill $$
     fi
     echo "$address"

@@ -11,7 +11,7 @@
     [[ "$(calc_tx_vsize 1 0 0 2)" == "226" ]]
     # 1 P2PKH input, 1 P2PKH output, 1 P2SH output
     [[ "$(calc_tx_vsize 1 0 1 1)" == "226" ]]
-    # 1 P2WSH input, 1 P2SH output
+    # 1 P2SH segwit input, 1 P2SH output
     [[ "$(calc_tx_vsize 0 1 0 1)" == "167" ]]
 }
 

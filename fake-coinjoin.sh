@@ -77,7 +77,7 @@ if (( ${#recipients[@]} > $(( $TX_OUTPUTS_MAX / 2 )) )); then
 fi
 
 (( $p2pkh_recipient_count > $p2sh_recipient_count )) && \
-    input_type="p2pkh" || input_type="p2wsh"
+    input_type="p2pkh" || input_type="p2sh_segwit"
 
 echo "Recipients: ${recipients[@]}"
 echo "input_type: $input_type"
@@ -150,11 +150,7 @@ for i in $(seq 0 $(( $mixdepth - 2 ))); do
     if ! is_btc_gte "$minimum_taker_amount" "$current_mixdepth_inputs_sum"; then
         # Add some simple random "maker" fee for now (800 .. 1200)
         makerfee="$(bc_float_calc "$(( $RANDOM % 400 + 800 )) * 0.00000001")"
-        if [ "$input_type" == "p2wsh" ]; then
-            maker_change_outputs+=("$(getnewaddress_p2wsh)")
-        else
-            maker_change_outputs+=("$(getnewaddress_p2pkh)")
-        fi
+        maker_change_outputs+=("$(eval "getnewaddress_$input_type")")
         maker_change_amounts+=("$(bc_float_calc "$current_mixdepth_inputs_sum - $amount + $makerfee")")
         total_maker_fees="$(bc_float_calc "$total_maker_fees + $makerfee")"
     fi
@@ -189,8 +185,8 @@ if [ "$input_type" == "p2pkh" ]; then
 else
     tx_vsize=$(( $tx_vsize * 4 ))
     tx_vsize=$(( $tx_vsize + $TX_FIXED_SIZE * 3 + $TX_SEGWIT_FIXED_SIZE ))
-    # P2WSH maker inputs
-    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * ( $TX_P2WSH_IN_SIZE * 4 + $TX_P2WSH_WITNESS_SIZE * 3 ) ))
+    # P2SH segwit maker inputs
+    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * ( $TX_P2SH_SEGWIT_IN_SIZE * 4 + $TX_P2SH_SEGWIT_WITNESS_SIZE * 3 ) ))
     # P2SH maker change outputs (recipient outputs already calculated above)
     tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2SH_OUT_SIZE * 4 ))
     # real size
@@ -216,7 +212,7 @@ do
         tx_vsize=$(( $tx_vsize + $TX_P2PKH_IN_SIZE ))
         taker_amount=$(bc_float_calc "$taker_amount + $TX_P2PKH_IN_SIZE * $fee * 0.001")
     else
-        additional_tx_vsize=$(( $TX_P2WSH_IN_SIZE * 4 + $TX_P2WSH_WITNESS_SIZE * 3 ))
+        additional_tx_vsize=$(( $TX_P2SH_SEGWIT_IN_SIZE * 4 + $TX_P2SH_SEGWIT_WITNESS_SIZE * 3 ))
         additional_tx_vsize=$(( ($additional_tx_vsize + 1) / 4 ))
         tx_vsize=$(( $tx_vsize + $additional_tx_vsize ))
         taker_amount=$(bc_float_calc "$taker_amount + $additional_tx_vsize * $fee * 0.001")
