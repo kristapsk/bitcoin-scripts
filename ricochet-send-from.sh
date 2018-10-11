@@ -87,14 +87,26 @@ echo "$source_address -> ${ricochet_addresses[$(( $hops - 1 ))]} ($send_amount)"
 if [ "$source_address_type" == "p2pkh" ]; then
     if [ "$ricochet_address_type" == "p2pkh" ]; then
         tx_vsize=$(calc_tx_vsize ${#utxo_txids[@]} 0 0 1 0 0)
-    else
+    elif [ "$ricochet_address_type" == "p2sh" ]; then
         tx_vsize=$(calc_tx_vsize ${#utxo_txids[@]} 0 0 0 1 0)
+    else
+        tx_vsize=$(calc_tx_vsize ${#utxo_txids[@]} 0 0 0 0 1)
+    fi
+elif [ "$source_address_type" == "p2sh" ]; then
+    if [ "$ricochet_address_type" == "p2pkh" ]; then
+        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 0 1 0 0)
+    elif [ "$ricochet_address_type" == "p2sh" ]; then
+        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 0 0 1 0)
+    else
+        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 0 0 0 1)
     fi
 else
     if [ "$ricochet_address_type" == "p2pkh" ]; then
-        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 0 1 0 0)
+        tx_vsize=$(calc_tx_vsize 0 0 ${#utxo_txids[@]} 1 0 0)
+    elif [ "$ricochet_address_type" == "p2sh" ]; then
+        tx_vsize=$(calc_tx_vsize 0 0 ${#utxo_txids[@]} 0 1 0)
     else
-        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 0 0 1 0)
+        tx_vsize=$(calc_tx_vsize 0 0 ${#utxo_txids[@]} 0 0 1)
     fi
 fi
 rawtx_inputs="["
@@ -127,14 +139,26 @@ for i in $(seq 1 $(( $hops - 1 )) | tac); do
     if [ "$ricochet_address_type" == "p2pkh" ]; then
         if [ "$output_address_type" == "p2pkh" ]; then
             tx_vsize=$(calc_tx_vsize 1 0 0 1 0 0)
-        else
+        elif [ "$output_address_type" == "p2sh" ]; then
             tx_vsize=$(calc_tx_vsize 1 0 0 0 1 0)
+        else
+            tx_vsize=$(calc_tx_vsize 1 0 0 0 0 1)
+        fi
+    elif [ "$ricochet_address_type" == "p2sh" ]; then
+        if [ "$output_address_type" == "p2pkh" ]; then
+            tx_vsize=$(calc_tx_vsize 0 1 0 1 0 0)
+        elif [ "$output_address_type" == "p2sh" ]; then
+            tx_vsize=$(calc_tx_vsize 0 1 0 0 1 0)
+        else
+            tx_vsize=$(calc_tx_vsize 0 1 0 0 0 1)
         fi
     else
         if [ "$output_address_type" == "p2pkh" ]; then
-            tx_vsize=$(calc_tx_vsize 0 1 0 1 0 0)
+            tx_vsize=$(calc_tx_vsize 0 0 1 1 0 0)
+        elif [ "$output_address_type" == "p2sh" ]; then
+            tx_vsize=$(calc_tx_vsize 0 0 1 0 1 0)
         else
-            tx_vsize=$(calc_tx_vsize 0 1 0 0 1 0)
+            tx_vsize=$(calc_tx_vsize 0 0 1 0 0 1)
         fi
     fi
 
