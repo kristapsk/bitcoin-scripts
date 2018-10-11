@@ -23,6 +23,9 @@ TX_P2PKH_OUT_SIZE=34
 TX_P2SH_SEGWIT_IN_SIZE=41
 TX_P2SH_SEGWIT_WITNESS_SIZE=109
 TX_P2SH_OUT_SIZE=34
+TX_P2WPKH_IN_SIZE=18
+TX_P2WPKH_WITNESS_SIZE=109
+TX_P2WPKH_OUT_SIZE=33
 
 # Common useful functions
 
@@ -55,10 +58,12 @@ function calc_tx_vsize()
 {
     p2pkh_in_count=$1
     p2sh_segwit_in_count=$2
-    p2pkh_out_count=$3
-    p2sh_out_count=$4
+    p2wpkh_in_count=$3
+    p2pkh_out_count=$4
+    p2sh_out_count=$5
+    p2wpkh_out_count=$6
 
-    if [ "$p2sh_segwit_in_count" == "0" ]; then
+    if [ "$p2sh_segwit_in_count" == "0" ] && [ "$p2wpkh_in_count" == "0" ]; then
         tx_size=$TX_FIXED_SIZE
         tx_size=$(( $tx_size + $p2pkh_in_count * $TX_P2PKH_IN_SIZE ))
         tx_size=$(( $tx_size + $p2pkh_out_count * $TX_P2PKH_OUT_SIZE ))
@@ -68,8 +73,10 @@ function calc_tx_vsize()
         tx_vsize=$(( $TX_FIXED_SIZE * 3 + $TX_SEGWIT_FIXED_SIZE ))
         tx_vsize=$(( $tx_vsize + $p2pkh_in_count * $TX_P2PKH_IN_SIZE * 4 ))
         tx_vsize=$(( $tx_vsize + $p2sh_segwit_in_count * ($TX_P2SH_SEGWIT_IN_SIZE * 4 + $TX_P2SH_SEGWIT_WITNESS_SIZE * 3) ))
+        tx_vsize=$(( $tx_vsize + $p2wpkh_in_count * ($TX_P2WPKH_IN_SIZE * 4 + $TX_P2WPKH_WITNESS_SIZE * 3) ))
         tx_vsize=$(( $tx_vsize + $p2pkh_out_count * $TX_P2PKH_OUT_SIZE * 4 ))
         tx_vsize=$(( $tx_vsize + $p2sh_out_count * $TX_P2SH_OUT_SIZE * 4 ))
+        tx_visze=$(( $tx_vsize + $p2wpkh_out_count * $TX_P2WPKH_OUT_SIZE * 4 ))
         tx_vsize=$(( ($tx_vsize + 1) / 4 ))
         echo $tx_vsize
     fi

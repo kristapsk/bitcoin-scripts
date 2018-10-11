@@ -86,15 +86,15 @@ echo "$source_address -> ${ricochet_addresses[$(( $hops - 1 ))]} ($send_amount)"
 # Calculate TX fee and build first transaction
 if [ "$source_address_type" == "p2pkh" ]; then
     if [ "$ricochet_address_type" == "p2pkh" ]; then
-        tx_vsize=$(calc_tx_vsize ${#utxo_txids[@]} 0 1 0)
+        tx_vsize=$(calc_tx_vsize ${#utxo_txids[@]} 0 0 1 0 0)
     else
-        tx_vsize=$(calc_tx_vsize ${#utxo_txids[@]} 0 0 1)
+        tx_vsize=$(calc_tx_vsize ${#utxo_txids[@]} 0 0 0 1 0)
     fi
 else
     if [ "$ricochet_address_type" == "p2pkh" ]; then
-        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 1 0)
+        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 0 1 0 0)
     else
-        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 0 1)
+        tx_vsize=$(calc_tx_vsize 0 ${#utxo_txids[@]} 0 0 1 0)
     fi
 fi
 rawtx_inputs="["
@@ -126,15 +126,15 @@ for i in $(seq 1 $(( $hops - 1 )) | tac); do
     fi
     if [ "$ricochet_address_type" == "p2pkh" ]; then
         if [ "$output_address_type" == "p2pkh" ]; then
-            tx_vsize=$(calc_tx_vsize 1 0 1 0)
+            tx_vsize=$(calc_tx_vsize 1 0 0 1 0 0)
         else
-            tx_vsize=$(calc_tx_vsize 1 0 0 1)
+            tx_vsize=$(calc_tx_vsize 1 0 0 0 1 0)
         fi
     else
         if [ "$output_address_type" == "p2pkh" ]; then
-            tx_vsize=$(calc_tx_vsize 0 1 1 0)
+            tx_vsize=$(calc_tx_vsize 0 1 0 1 0 0)
         else
-            tx_vsize=$(calc_tx_vsize 0 1 0 1)
+            tx_vsize=$(calc_tx_vsize 0 1 0 0 1 0)
         fi
     fi
 
