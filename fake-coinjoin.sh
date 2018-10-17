@@ -50,6 +50,7 @@ echo "Using fee $fee per KB"
 recipients=()
 p2pkh_recipient_count=0
 p2sh_recipient_count=0
+bech32_recipient_count=0
 
 while (( ${#} > 0 )); do
     address=$1
@@ -60,14 +61,26 @@ while (( ${#} > 0 )); do
     recipients+=("$address")
     if is_p2pkh_bitcoin_address $address; then
         ((p2pkh_recipient_count++))
-    else
+    elif is_p2sh_bitcoin_address $address; then
         ((p2sh_recipient_count++))
+    else
+        ((bech32_recipient_count++))
     fi
     shift
 done
 
 if (( $p2pkh_recipient_count > 1 )) && (( $p2sh_recipient_count > 1 )); then
     echoerr "Only one recipient can be a different kind! (P2PKH or P2SH)"
+    exit 2
+fi
+
+if (( $bech32_recipient_count > 1 )); then
+    echoerr "Only one bech32 recipient is supported currently!"
+    exit 2
+fi
+
+if (( $bech32_recipient_count > 0 )) && (( $p2pkh_recipient_count > 0 )); then
+    echoerr "Bech32 recipient can be combined only with P2SH recipients!"
     exit 2
 fi
 
@@ -177,6 +190,7 @@ fi
 # Recipients
 tx_vsize=$(( $p2pkh_recipient_count * $TX_P2PKH_OUT_SIZE ))
 tx_vsize=$(( $tx_vsize + $p2sh_recipient_count * $TX_P2SH_OUT_SIZE ))
+tx_vsize=$(( $tx_vsize + $bech32_recipient_count * $TX_P2WPKH_OUT_SIZE ))
 # Fixed size + "maker" inputs + "maker" change outputs
 if [ "$input_type" == "p2pkh" ]; then
     tx_vsize=$(( $tx_vsize + $TX_FIXED_SIZE ))
