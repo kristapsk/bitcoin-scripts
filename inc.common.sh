@@ -193,7 +193,6 @@ function signrawtransactionwithwallet()
 
 function show_tx_by_id()
 {
-    call_bitcoin_cli decoderawtransaction \
-        $(call_bitcoin_cli getrawtransaction "$1")
+    call_bitcoin_cli getrawtransaction "$1" | call_bitcoin_cli -stdin decoderawtransaction
 }
 
