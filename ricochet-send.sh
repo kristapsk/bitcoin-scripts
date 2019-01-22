@@ -43,10 +43,22 @@ if is_btc_lt "$fee" "$minrelayfee"; then
 fi
 
 echo "Ricocheting $amount BTC to $address via $hops hops using $fee fee per KB"
+read -p "Is this ok? " -n 1 -r
+echo
 
+if ! [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo NOT
+    exit
+fi
+
+PREPARE_START="$(date +%s.%N)"
+
+# We use P2PKH addresses for now, as it is easer to calculate txid from raw tx'es that way.
+# Transaction malleability is not a big concern here as funds will anyway end up in the user's wallet.
 ricochet_addresses=()
 for i in $(seq 1 $(( $hops - 1 ))); do
-    ricochet_addresses+=("$(call_bitcoin_cli getnewaddress)")
+#    ricochet_addresses+=("$(call_bitcoin_cli getnewaddress)")
+    ricochet_addresses+=("$(getnewaddress_p2pkh)")
 done
 ricochet_addresses+=("$address")
 
@@ -58,35 +70,60 @@ send_amount=$(bc_float_calc "$amount + $ricochet_fees")
 
 #echo "Richochet addresses: ${ricochet_addresses[@]}"
 
-echo "(wallet) -> ${ricochet_addresses[0]} ($send_amount)"
+# Send out first transaction
+echo -n "0: (wallet) -> ${ricochet_addresses[0]} ($send_amount) - "
 call_bitcoin_cli settxfee $fee > /dev/null
 txid=$(call_bitcoin_cli sendtoaddress ${ricochet_addresses[0]} $send_amount)
+echo "$txid"
 rawtx=$(show_tx_by_id $txid)
 #echo "$rawtx"
 vout_idx=""
 idx=0
-while read value; do
-    if [ "$value" == "$send_amount" ]; then
+while read vout_address; do
+    if [ "$vout_address" == "${ricochet_addresses[0]}" ]; then
         vout_idx=$idx
-        break
+        value="$(echo "$rawtx" | jq -r ".vout[$vout_idx].value")"
+        if [ "$value" == "$send_amount" ]; then
+            prev_pubkey="$(echo "$rawtx" | jq -r ".vout[$vout_idx].scriptPubKey.hex")"
+            break
+        fi
     fi
     ((idx++))
-done < <(echo "$rawtx" | jq_btc_float ".vout[].value")
-if [ "$vout_idx" == "" ]; then
+done < <(echo "$rawtx" | jq -r ".vout[].scriptPubKey.addresses[0]")
+#done < <(echo "$rawtx" | jq_btc_float ".vout[].value")
+if [ "$prev_pubkey" == "" ]; then
     echoerr "$rawtx"
     echoerr "FATAL: Can't find the right vout in the first transaction, please fill a bug report!"
     exit 1
 fi
 
+# Prepare and sign rest of transactions
+echo "Preparing rest of transactions..."
+signedtxes=()
+for i in $(seq 1 $(( $hops - 1 ))); do
+    send_amount=$(bc_float_calc "$send_amount - $single_ricochet_tx_fee")
+    echo -n "$i: ${ricochet_addresses[$(( $i - 1 ))]} -> ${ricochet_addresses[$i]} ($send_amount) - "
+    rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$txid\",\"vout\":$vout_idx}]" "{\"${ricochet_addresses[$i]}\":$send_amount}")
+    privkey=$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$(( $i - 1 ))]}")
+    signedtx="$(signrawtransactionwithkey "$rawtx" "[\"$privkey\"]" "[{\"txid\":\"$txid\",\"vout\":$vout_idx,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$send_amount}]")"
+    txid="$(echo "$signedtx" | legacy_tx_hexstring_to_txid)"
+    signedtxes+=("$signedtx")
+    vout_idx=0
+    prev_pubkey="$(call_bitcoin_cli decoderawtransaction "$signedtx" | jq -r ".vout[].scriptPubKey.hex")"
+    echo "$txid"
+done
+
+#printf '%s\n' "${signedtxes[@]}"
+
+PREPARE_DURATION="$(echo "$(date +%s.%N) - $PREPARE_START" | bc)"
+printf "Initial transaction preparing took %.6f seconds\n" $PREPARE_DURATION
+
+# Broadcast transactions with delays
+echo "Sending transactions..."
 for i in $(seq 1 $(( $hops - 1 ))); do
     random_delay=$(( $RANDOM % ($sleeptime_max - $sleeptime_min) + $sleeptime_min ))
     echo "Sleeping for $random_delay seconds"
     sleep $random_delay
-    send_amount=$(bc_float_calc "$send_amount - $single_ricochet_tx_fee")
-    echo "${ricochet_addresses[$(( $i - 1 ))]} -> ${ricochet_addresses[$i]} ($send_amount)"
-    rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$txid\",\"vout\":$vout_idx}]" "{\"${ricochet_addresses[$i]}\":$send_amount}")
-    signedtx=$(signrawtransactionwithwallet "$rawtx")
-    txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
-    vout_idx=0
+    echo "$i: $(call_bitcoin_cli sendrawtransaction "${signedtxes[$(( $i - 1 ))]}")"
 done
 

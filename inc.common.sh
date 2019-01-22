@@ -178,6 +178,19 @@ function jq_btc_float()
     jq "$1" | btc_amount_format
 }
 
+function signrawtransactionwithkey()
+{
+    signedtx=$(try_bitcoin_cli signrawtransactionwithkey "$1" "$2" "$3" | jq -r ".hex")
+    if [ "$signedtx" == "" ]; then
+        signedtx=$(try_bitcoin_cli signrawtransaction "$1" "$3" "$2" | jq -r ".hex")
+    fi
+    if [ "$signedtx" == "" ]; then
+        echoerr "FATAL: signing transaction with privkey failed."
+        kill $$
+    fi
+    echo "$signedtx"
+}
+
 function signrawtransactionwithwallet()
 {
     signedtx=$(try_bitcoin_cli signrawtransactionwithwallet "$1" | jq -r ".hex")
@@ -191,8 +204,23 @@ function signrawtransactionwithwallet()
     echo "$signedtx"
 }
 
+# Returns SHA-256d of input, where SHA-256d(x) = SHA-256(SHA-256(x))
+function sha256d()
+{
+    echo -en "$(sha256sum | grep -Eo "[a-z0-9]{64}" | sed 's/.\{2\}/\\x&/g')" | sha256sum | grep -Eo "[a-z0-9]{64}"
+}
+
 function show_tx_by_id()
 {
     call_bitcoin_cli getrawtransaction "$1" | call_bitcoin_cli -stdin decoderawtransaction
+}
+
+# Return txid for a signed hex-encoded transaction
+# Result should be the same as sendrawtransaction return value, but without broadcasting transaction to the network.
+# Will currently not work with SegWit transactions! (hence legacy prefix)
+function legacy_tx_hexstring_to_txid()
+{
+    # sed magic from https://unix.stackexchange.com/questions/321860/reverse-a-hexadecimal-number-in-bash
+    echo -en "$(sed 's/.\{2\}/\\x&/g')" | sha256d | sed -e 'G;:1' -e 's/\(..\)\(.*\n\)/\2\1/;t1' -e 's/.//'
 }
 
