@@ -3,7 +3,7 @@
 . $(dirname $0)/inc.common.sh
 
 if [ "$2" == "" ]; then
-    echo "Usage: $(basename $0) [options] amount destination_address [hops] [fee] [sleeptime_min] [sleeptime_max]"
+    echo "Usage: $(basename $0) [options] amount destination_address [hops [fee [sleeptime_min [sleeptime_max]]]]"
     exit
 fi
 
