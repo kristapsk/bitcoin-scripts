@@ -68,11 +68,15 @@ if ! [[ $REPLY =~ ^[Yy]$ ]]; then
     exit
 fi
 
+PREPARE_START="$(date +%s.%N)"
+
 ricochet_addresses=()
 # add destination first, we will iterate in reverse order (see tac in for below)
 ricochet_addresses+=("$destination_address")
+# We use P2PKH addresses for ricochet hops for now, that's easer.
 for i in $(seq 1 $(( $hops - 1 ))); do
-    ricochet_addresses+=("$(call_bitcoin_cli getnewaddress)")
+#    ricochet_addresses+=("$(call_bitcoin_cli getnewaddress)")
+    ricochet_addresses+=("$(getnewaddress_p2pkh)")
 done
 
 source_address_type=$(get_bitcoin_address_type "$source_address")
@@ -81,7 +85,7 @@ destination_address_type=$(get_bitcoin_address_type "$destination_address")
 
 #echo "Richochet addresses: ${ricochet_addresses[@]}"
 
-echo "$source_address -> ${ricochet_addresses[$(( $hops - 1 ))]} ($send_amount)"
+echo -n "0: $source_address -> ${ricochet_addresses[$(( $hops - 1 ))]} ($send_amount) - "
 
 # Calculate TX fee and build first transaction
 if [ "$source_address_type" == "p2pkh" ]; then
@@ -123,14 +127,15 @@ send_amount=$(bc_float_calc "$send_amount - $(bc_float_calc "$tx_vsize * $fee * 
 rawtx=$(call_bitcoin_cli createrawtransaction "$rawtx_inputs" "{\"${ricochet_addresses[$(( $hops - 1 ))]}\":$send_amount}")
 signedtx=$(signrawtransactionwithwallet "$rawtx")
 txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
+decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
+prev_pubkey="$(echo "$decodedtx" | jq -r ".vout[].scriptPubKey.hex")"
+echo "$txid"
 
-# Do the rest of the transactions
-
-for i in $(seq 1 $(( $hops - 1 )) | tac); do
-    random_delay=$(( $RANDOM % ($sleeptime_max - $sleeptime_min) + $sleeptime_min ))
-    echo "Sleeping for $random_delay seconds"
-    sleep $random_delay
-
+# Prepare and sign rest of transactions
+echo "Preparing rest of transactions..."
+signedtxes=()
+j=1
+for i in $(seq 1 $(( $hops - 1)) | tac); do
     if [ "$i" == "1" ]; then
         output_address_type=$destination_address_type
     else
@@ -163,9 +168,28 @@ for i in $(seq 1 $(( $hops - 1 )) | tac); do
     fi
 
     send_amount=$(bc_float_calc "$send_amount - $(bc_float_calc "$tx_vsize * $fee * 0.001")")
-    echo "${ricochet_addresses[$i]} -> ${ricochet_addresses[$(( $i - 1 ))]} ($send_amount)"
+    echo -n "$j: ${ricochet_addresses[$i]} -> ${ricochet_addresses[$(( $i - 1 ))]} ($send_amount) - "
     rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$txid\",\"vout\":0}]" "{\"${ricochet_addresses[$(( $i - 1 ))]}\":$send_amount}")
-    signedtx=$(signrawtransactionwithwallet "$rawtx")
-    txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
+    privkey=$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$i]}")
+    signedtx=$(signrawtransactionwithkey "$rawtx" "[\"$privkey\"]" "[{\"txid\":\"$txid\",\"vout\":0,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$send_amount}]")
+    decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
+    txid="$(echo "$decodedtx" | jq -r ".txid")"
+    signedtxes+=("$signedtx")
+    prev_pubkey="$(echo "$decodedtx" | jq -r ".vout[].scriptPubKey.hex")"
+    echo "$txid"
+    ((j++))
 done
 
+#printf '%s\n' "${signedtxes[@]}"
+
+PREPARE_DURATION="$(echo "$(date +%s.%N) - $PREPARE_START" | bc)"
+LANG=POSIX printf "Initial transaction preparing took %.6f seconds\n" $PREPARE_DURATION
+
+# Broadcast transactions with delays
+echo "Sending transactions..."
+for i in $(seq 1 $(( $hops - 1 ))); do
+    random_delay=$(( $RANDOM % ($sleeptime_max - $sleeptime_min) + $sleeptime_min ))
+    echo "Sleeping for $random_delay seconds"
+    sleep $random_delay
+    echo "$i: $(call_bitcoin_cli sendrawtransaction "${signedtxes[$(( $i - 1 ))]}")"
+done
