@@ -53,8 +53,7 @@ fi
 
 PREPARE_START="$(date +%s.%N)"
 
-# We use P2PKH addresses for now, as it is easer to calculate txid from raw tx'es that way.
-# Transaction malleability is not a big concern here as funds will anyway end up in the user's wallet.
+# We use P2PKH addresses for ricochet hops for now, that's easer.
 ricochet_addresses=()
 for i in $(seq 1 $(( $hops - 1 ))); do
 #    ricochet_addresses+=("$(call_bitcoin_cli getnewaddress)")
@@ -106,10 +105,11 @@ for i in $(seq 1 $(( $hops - 1 ))); do
     rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$txid\",\"vout\":$vout_idx}]" "{\"${ricochet_addresses[$i]}\":$send_amount}")
     privkey=$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$(( $i - 1 ))]}")
     signedtx="$(signrawtransactionwithkey "$rawtx" "[\"$privkey\"]" "[{\"txid\":\"$txid\",\"vout\":$vout_idx,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$send_amount}]")"
-    txid="$(echo "$signedtx" | legacy_tx_hexstring_to_txid)"
+    decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
+    txid="$(echo "$decodedtx" | jq -r ".txid")"
     signedtxes+=("$signedtx")
     vout_idx=0
-    prev_pubkey="$(call_bitcoin_cli decoderawtransaction "$signedtx" | jq -r ".vout[].scriptPubKey.hex")"
+    prev_pubkey="$(echo "$decodedtx" | jq -r ".vout[].scriptPubKey.hex")"
     echo "$txid"
 done
 
