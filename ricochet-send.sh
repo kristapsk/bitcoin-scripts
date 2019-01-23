@@ -116,7 +116,7 @@ done
 #printf '%s\n' "${signedtxes[@]}"
 
 PREPARE_DURATION="$(echo "$(date +%s.%N) - $PREPARE_START" | bc)"
-printf "Initial transaction preparing took %.6f seconds\n" $PREPARE_DURATION
+LANG=POSIX printf "Initial transaction preparing took %.6f seconds\n" $PREPARE_DURATION
 
 # Broadcast transactions with delays
 echo "Sending transactions..."
