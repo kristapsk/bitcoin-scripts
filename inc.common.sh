@@ -68,6 +68,7 @@ function calc_tx_vsize()
         tx_size=$(( $tx_size + $p2pkh_in_count * $TX_P2PKH_IN_SIZE ))
         tx_size=$(( $tx_size + $p2pkh_out_count * $TX_P2PKH_OUT_SIZE ))
         tx_size=$(( $tx_size + $p2sh_out_count * $TX_P2SH_OUT_SIZE ))
+        tx_size=$(( $tx_size +  $p2wpkh_out_count * $TX_P2WPKH_OUT_SIZE ))
         echo $tx_size
     else
         tx_vsize=$(( $TX_FIXED_SIZE * 3 + $TX_SEGWIT_FIXED_SIZE ))
