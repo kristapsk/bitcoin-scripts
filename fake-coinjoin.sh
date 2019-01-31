@@ -4,6 +4,9 @@
 
 if [ "$3" == "" ]; then
     echo "Usage: $(basename $0) [options] amount address1 address2..."
+    echo "Where:"
+    echo "  amount              - amount to send in BTC"
+    echo "  address...          - destination addresses (2 or more)"
     exit
 fi
 

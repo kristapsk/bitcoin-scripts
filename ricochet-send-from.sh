@@ -4,6 +4,13 @@
 
 if [ "$2" == "" ]; then
     echo "Usage: $(basename $0) [options] source_address destination_address [hops [fee [sleeptime_min [sleeptime_max]]]]"
+    echo "Where:"
+    echo "  source_address      - source address (all funds from that address will be send)"
+    echo "  destination_address - destination address"
+    echo "  hops                - number of hops (default: 5)"
+    echo "  fee                 - transaction fee per kW (default: \"estimatesmartfee 2\", currently $($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options 2) BTC)"
+    echo "  sleeptime_min       - minimum sleep time between hops in seconds (default: 10)"
+    echo "  sleeptime_max       - maximum sleep time between hops in seconds (default: 15)"
     exit
 fi
 
