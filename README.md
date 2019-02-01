@@ -23,7 +23,7 @@ None of scripts do wallet unlocking by itself, so you must call `bitcoin-cli wal
 
 Send random amount between 0.001 and 0.002 BTC [donations](https://github.com/kristapsk/bitcoin-donation-addresses) using fake coinjoin. Will require enough P2PKH inputs with 5 or more confirmations in a wallet. Transaction will have two or more inputs from your wallet and two additional change outputs going back to your wallet (in addition to recipients).
 ```
-$ ./fake-coinjoin.sh $(./randbtc.sh 0.001 0.002) 1andreas3batLhQa2FawWjeyjCqyBzypd 121kQfPpBGQ9KWPxvmTsgHEMe28Fj4ZffF
+$ ./fake-coinjoin.sh $(./randbtc.sh 0.001 0.002) 1andreas3batLhQa2FawWjeyjCqyBzypd 3N6qaU3bnF43u4YTFKQf8usd3UqvyShovS
 ```
 
 Send 0.001 BTC donation using ricochet send with 5 hops and 24 hour confirmation target.
