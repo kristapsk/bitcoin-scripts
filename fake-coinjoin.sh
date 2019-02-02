@@ -100,18 +100,18 @@ echo "input_type: $input_type"
 
 function select_greediest()
 {
-    grep -v '\[\|\]' | sed 's/},/}/g' | jq -s -c 'sort_by(.amount)'
+    jq -s "sort_by(.amount) | .[]"
 }
 
-utxo="$(call_bitcoin_cli listunspent $taker_utxo_age 999999 '[]' false)"
+utxo="$(call_bitcoin_cli listunspent $taker_utxo_age 999999 "[]" false | jq ".[] | select(.spendable)")"
 if [ "$merge_algorithm" == "greediest" ]; then
 	utxo="$(echo "$utxo" | select_greediest)"
 fi
 
-readarray -t utxo_txids < <( echo "$utxo" | jq -r ".[].txid" )
-readarray -t utxo_vouts < <( echo "$utxo" | jq -r ".[].vout" )
-readarray -t utxo_addresses < <( echo "$utxo" | jq -r ".[].address" )
-readarray -t utxo_amounts < <( echo "$utxo" | jq_btc_float ".[].amount" )
+readarray -t utxo_txids < <( echo "$utxo" | jq -r ".txid" )
+readarray -t utxo_vouts < <( echo "$utxo" | jq -r ".vout" )
+readarray -t utxo_addresses < <( echo "$utxo" | jq -r ".address" )
+readarray -t utxo_amounts < <( echo "$utxo" | jq_btc_float ".amount" )
 
 # Filter out unwanted input address types
 # Also ignore UTXO's with address reuse, JoinMarket normally don't have them
