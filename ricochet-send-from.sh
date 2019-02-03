@@ -1,9 +1,9 @@
-#! /bin/bash
+#!/usr/bin/env bash
 
 . $(dirname $0)/inc.common.sh
 
 if [ "$2" == "" ]; then
-    echo "Usage: $(basename $0) [options] source_address destination_address [hops [fee [sleeptime_min [sleeptime_max]]]]"
+    echo "Usage: $(basename $0) [options] source_address destination_address [hops [fee [sleeptime_min [sleeptime_max [hop_confirmations]]]]]"
     echo "Where:"
     echo "  source_address      - source address (all funds from that address will be send)"
     echo "  destination_address - destination address"
@@ -11,6 +11,7 @@ if [ "$2" == "" ]; then
     echo "  fee                 - transaction fee per kW (default: \"estimatesmartfee 2\", currently $($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options 2) BTC)"
     echo "  sleeptime_min       - minimum sleep time between hops in seconds (default: 10)"
     echo "  sleeptime_max       - maximum sleep time between hops in seconds (default: 15)"
+    echo "  hop_confirmations   - minimum number of confirmations between hops (default: 0)"
     exit
 fi
 
@@ -42,6 +43,11 @@ if [ "$6" != "" ]; then
 elif [ "$5" != "" ]; then
     sleeptime_min=$5
     sleeptime_max=$5
+fi
+if [ "$7" != "" ]; then
+    hop_confirmations=$7
+else
+    hop_confirmations=0
 fi
 
 # Force minimum required fee
@@ -138,6 +144,8 @@ decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
 prev_pubkey="$(echo "$decodedtx" | jq -r ".vout[].scriptPubKey.hex")"
 echo "$txid"
 
+use_txid="$txid"
+
 # Prepare and sign rest of transactions
 echo "Preparing rest of transactions..."
 signedtxes=()
@@ -176,14 +184,14 @@ for i in $(seq 1 $(( $hops - 1)) | tac); do
 
     send_amount=$(bc_float_calc "$send_amount - $(bc_float_calc "$tx_vsize * $fee * 0.001")")
     echo -n "$j: ${ricochet_addresses[$i]} -> ${ricochet_addresses[$(( $i - 1 ))]} ($send_amount) - "
-    rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$txid\",\"vout\":0}]" "{\"${ricochet_addresses[$(( $i - 1 ))]}\":$send_amount}")
+    rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$use_txid\",\"vout\":0}]" "{\"${ricochet_addresses[$(( $i - 1 ))]}\":$send_amount}")
     privkey=$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$i]}")
-    signedtx=$(signrawtransactionwithkey "$rawtx" "[\"$privkey\"]" "[{\"txid\":\"$txid\",\"vout\":0,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$send_amount}]")
+    signedtx=$(signrawtransactionwithkey "$rawtx" "[\"$privkey\"]" "[{\"txid\":\"$use_txid\",\"vout\":0,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$send_amount}]")
     decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
-    txid="$(echo "$decodedtx" | jq -r ".txid")"
+    use_txid="$(echo "$decodedtx" | jq -r ".txid")"
     signedtxes+=("$signedtx")
     prev_pubkey="$(echo "$decodedtx" | jq -r ".vout[].scriptPubKey.hex")"
-    echo "$txid"
+    echo "$use_txid"
     ((j++))
 done
 
@@ -195,8 +203,13 @@ LANG=POSIX printf "Initial transaction preparing took %.6f seconds (you can lock
 # Broadcast transactions with delays
 echo "Sending transactions..."
 for i in $(seq 1 $(( $hops - 1 ))); do
+    if [ "$hop_confirmations" != "0" ]; then
+        echo "Waiting for $hop_confirmations transaction confirmation(s)..."
+        wait_for_tx_confirmations "$txid" "$hop_confirmations"
+    fi
     random_delay=$(( $RANDOM % ($sleeptime_max - $sleeptime_min) + $sleeptime_min ))
-    echo "Sleeping for $random_delay seconds"
+    echo "Sleeping for $random_delay seconds..."
     sleep $random_delay
     echo "$i: $(call_bitcoin_cli sendrawtransaction "${signedtxes[$(( $i - 1 ))]}")"
+    txid="$(call_bitcoin_cli decoderawtransaction "${signedtxes[$(( $i - 1 ))]}" | jq -r ".txid")"
 done

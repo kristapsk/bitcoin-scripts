@@ -216,6 +216,29 @@ function show_tx_by_id()
     call_bitcoin_cli getrawtransaction "$1" | call_bitcoin_cli -stdin decoderawtransaction
 }
 
+function get_tx_confirmations()
+{
+    confirmations=$(try_bitcoin_cli gettransaction "$1" | jq ".confirmations")
+    if [ "$confirmations" == "" ]; then
+        confirmations=0
+    fi
+    echo $confirmations
+}
+
+function wait_for_tx_confirmations()
+{
+    txid=$1
+    want_confirmations=$2
+    if [ "$3" != "" ]; then
+        check_frequency=$3
+    else
+        check_frequency=5
+    fi
+    while (( $(get_tx_confirmations $txid) < $want_confirmations )); do
+        sleep $check_frequency
+    done
+}
+
 # Return txid for a signed hex-encoded transaction
 # Result should be the same as sendrawtransaction return value, but without broadcasting transaction to the network.
 # Will currently not work with SegWit transactions! (hence legacy prefix)
