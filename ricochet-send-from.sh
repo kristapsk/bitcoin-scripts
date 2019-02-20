@@ -17,11 +17,12 @@ fi
 
 source_address=$1
 destination_address=$2
-if
-    ! is_valid_bitcoin_address $source_address || \
-    ! is_valid_bitcoin_address $destination_address; 
-then
-    echo "Invalid Bitcoin address $address"
+if ! is_valid_bitcoin_address $source_address; then
+    echo "Invalid Bitcoin address $source_address"
+    exit 1
+fi
+if ! is_valid_bitcoin_address $destination_address; then
+    echo "Invalid Bitcoin address $destination_address"
     exit 1
 fi
 
