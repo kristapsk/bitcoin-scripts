@@ -162,12 +162,19 @@ total_maker_fees=0
 minimum_taker_amount="$(bc_float_calc "$amount + ($DUST_THRESHOLD * 0.00000001) + 0.00000001")"
 for i in $(seq 0 $(( $mixdepth - 2 ))); do
     current_mixdepth_inputs_sum=0
+    maker_used_txids=()
     while
         (( $utxo_idx < ${#utxo_addresses_filtered[@]} )) && \
         is_btc_gte "$minimum_taker_amount" "$current_mixdepth_inputs_sum";
     do
-        current_mixdepth_inputs_sum=$(bc_float_calc "$current_mixdepth_inputs_sum + ${utxo_amounts_filtered[$utxo_idx]}")
-        maker_utxo_idxs+=("$utxo_idx")
+        # Stonewall rule: Utxos resulting from the same transaction are never used together in a same set.
+        if ! grep -qs "${utxo_txids_filtered[$utxo_idx]}" <<< "${maker_used_txids[@]}"; then
+            current_mixdepth_inputs_sum=$(bc_float_calc "$current_mixdepth_inputs_sum + ${utxo_amounts_filtered[$utxo_idx]}")
+            maker_utxo_idxs+=("$utxo_idx")
+            maker_used_txids+=("${utxo_txids_filtered[$utxo_idx]}")
+#        else
+#            echo "Skipping utxo_idx $utxo_idx for a maker, as txid ${utxo_txids_filtered[$utxo_idx]} already used"
+        fi
         ((utxo_idx++))
     done
     if ! is_btc_gte "$minimum_taker_amount" "$current_mixdepth_inputs_sum"; then
@@ -225,12 +232,19 @@ echo "taker_amount = $taker_amount"
 
 taker_utxo_idxs=()
 current_mixdepth_inputs_sum=0
+taker_used_txids=()
 while
     (( $utxo_idx < ${#utxo_addresses_filtered[@]} )) && \
     is_btc_gte "$taker_amount" "$current_mixdepth_inputs_sum";
 do
-    current_mixdepth_inputs_sum=$(bc_float_calc "$current_mixdepth_inputs_sum + ${utxo_amounts_filtered[$utxo_idx]}")
-    taker_utxo_idxs+=("$utxo_idx")
+    # Stonewall rule: Utxos resulting from the same transaction are never used together in a same set.
+    if ! grep -qs "${utxo_txids_filtered[$utxo_idx]}" <<< "${taker_used_txids[@]}"; then
+        current_mixdepth_inputs_sum=$(bc_float_calc "$current_mixdepth_inputs_sum + ${utxo_amounts_filtered[$utxo_idx]}")
+        taker_utxo_idxs+=("$utxo_idx")
+        taker_used_txids+=("${utxo_txids_filtered[$utxo_idx]}")
+#    else
+#        echo "Skipping utxo_idx $utxo_idx for a taker, as txid ${utxo_txids_filtered[$utxo_idx]} already used"
+    fi
     ((utxo_idx++))
     if [ "$input_type" == "p2pkh" ]; then
         tx_vsize=$(( $tx_vsize + $TX_P2PKH_IN_SIZE ))
