@@ -20,7 +20,7 @@ absurd_fee_per_kb=150000
 taker_utxo_age=5
 # Coin selection ("merge") algorithm.
 # Not the same as JM algos currently.
-# "default" is a dumb coin selection, using listunspent order.
+# "default" is a dumb coin selection, using random order.
 # "greediest" is for rapid dust sweeping, ordering UTXO's from the smallest upwards.
 merge_algorithm=default
 
@@ -98,6 +98,11 @@ fi
 echo "Recipients: ${recipients[@]}"
 echo "input_type: $input_type"
 
+function select_default()
+{
+    jq -c "" | shuf | jq ""
+}
+
 function select_greediest()
 {
     jq -s "sort_by(.amount) | .[]"
@@ -105,7 +110,9 @@ function select_greediest()
 
 utxo="$(call_bitcoin_cli listunspent $taker_utxo_age 999999 "[]" false | jq ".[] | select(.spendable)")"
 if [ "$merge_algorithm" == "greediest" ]; then
-	utxo="$(echo "$utxo" | select_greediest)"
+    utxo="$(echo "$utxo" | select_greediest)"
+else
+    utxo="$(echo "$utxo" | select_default)"
 fi
 
 readarray -t utxo_txids < <( echo "$utxo" | jq -r ".txid" )
