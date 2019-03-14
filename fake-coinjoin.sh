@@ -176,8 +176,10 @@ for i in $(seq 0 $(( ${#recipients[@]} - 2 ))); do
         ((utxo_idx++))
     done
     if ! is_btc_gte "$minimum_taker_amount" "$current_set_inputs_sum"; then
-        # Add some simple random "maker" fee for now (800 .. 1200)
-        makerfee="$(bc_float_calc "$(( $RANDOM % 400 + 800 )) * 0.00000001")"
+        # Add some simple random "maker fee" (10 .. 1200)
+        # Interval is choosen by looking at real-world JM orderbook and https://github.com/JoinMarket-Org/joinmarket-clientserver/pull/166
+        makerfee="$(bc_float_calc "$(( $RANDOM % 1190 + 10 )) * 0.00000001")"
+        echo "Using \"maker fee\" $makerfee"
         maker_change_outputs+=("$(eval "getnewaddress_$input_type")")
         maker_change_amounts+=("$(bc_float_calc "$current_set_inputs_sum - $amount + $makerfee")")
         total_maker_fees="$(bc_float_calc "$total_maker_fees + $makerfee")"
