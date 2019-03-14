@@ -150,8 +150,6 @@ unset utxo_amounts
 
 # Calculate fees, TX input/output bytes, etc here
 
-mixdepth=${#recipients[@]}
-
 # Select "maker" inputs
 maker_utxo_idxs=()
 utxo_idx=0
@@ -160,16 +158,16 @@ maker_change_amounts=()
 total_maker_fees=0
 # minimum taker amount must be above amount + dust
 minimum_taker_amount="$(bc_float_calc "$amount + ($DUST_THRESHOLD * 0.00000001) + 0.00000001")"
-for i in $(seq 0 $(( $mixdepth - 2 ))); do
-    current_mixdepth_inputs_sum=0
+for i in $(seq 0 $(( ${#recipients[@]} - 2 ))); do
+    current_set_inputs_sum=0
     maker_used_txids=()
     while
         (( $utxo_idx < ${#utxo_addresses_filtered[@]} )) && \
-        is_btc_gte "$minimum_taker_amount" "$current_mixdepth_inputs_sum";
+        is_btc_gte "$minimum_taker_amount" "$current_set_inputs_sum";
     do
         # Stonewall rule: Utxos resulting from the same transaction are never used together in a same set.
         if ! grep -qs "${utxo_txids_filtered[$utxo_idx]}" <<< "${maker_used_txids[@]}"; then
-            current_mixdepth_inputs_sum=$(bc_float_calc "$current_mixdepth_inputs_sum + ${utxo_amounts_filtered[$utxo_idx]}")
+            current_set_inputs_sum=$(bc_float_calc "$current_set_inputs_sum + ${utxo_amounts_filtered[$utxo_idx]}")
             maker_utxo_idxs+=("$utxo_idx")
             maker_used_txids+=("${utxo_txids_filtered[$utxo_idx]}")
 #        else
@@ -177,11 +175,11 @@ for i in $(seq 0 $(( $mixdepth - 2 ))); do
         fi
         ((utxo_idx++))
     done
-    if ! is_btc_gte "$minimum_taker_amount" "$current_mixdepth_inputs_sum"; then
+    if ! is_btc_gte "$minimum_taker_amount" "$current_set_inputs_sum"; then
         # Add some simple random "maker" fee for now (800 .. 1200)
         makerfee="$(bc_float_calc "$(( $RANDOM % 400 + 800 )) * 0.00000001")"
         maker_change_outputs+=("$(eval "getnewaddress_$input_type")")
-        maker_change_amounts+=("$(bc_float_calc "$current_mixdepth_inputs_sum - $amount + $makerfee")")
+        maker_change_amounts+=("$(bc_float_calc "$current_set_inputs_sum - $amount + $makerfee")")
         total_maker_fees="$(bc_float_calc "$total_maker_fees + $makerfee")"
     fi
 done
@@ -196,7 +194,7 @@ for i in $(seq 0 $(( ${#maker_change_amounts[@]} - 1 ))); do
     echo "$i: ${maker_change_amounts[$i]} ${maker_change_outputs[$i]}"
 done
 
-if is_btc_gte "$minimum_taker_amount" "$current_mixdepth_inputs_sum"; then
+if is_btc_gte "$minimum_taker_amount" "$current_set_inputs_sum"; then
     echoerr "Not enough good inputs, aborting."
     exit 1
 fi
@@ -231,15 +229,15 @@ echo "taker_amount = $taker_amount"
 # Select "taker" inputs
 
 taker_utxo_idxs=()
-current_mixdepth_inputs_sum=0
+current_set_inputs_sum=0
 taker_used_txids=()
 while
     (( $utxo_idx < ${#utxo_addresses_filtered[@]} )) && \
-    is_btc_gte "$taker_amount" "$current_mixdepth_inputs_sum";
+    is_btc_gte "$taker_amount" "$current_set_inputs_sum";
 do
     # Stonewall rule: Utxos resulting from the same transaction are never used together in a same set.
     if ! grep -qs "${utxo_txids_filtered[$utxo_idx]}" <<< "${taker_used_txids[@]}"; then
-        current_mixdepth_inputs_sum=$(bc_float_calc "$current_mixdepth_inputs_sum + ${utxo_amounts_filtered[$utxo_idx]}")
+        current_set_inputs_sum=$(bc_float_calc "$current_set_inputs_sum + ${utxo_amounts_filtered[$utxo_idx]}")
         taker_utxo_idxs+=("$utxo_idx")
         taker_used_txids+=("${utxo_txids_filtered[$utxo_idx]}")
 #    else
@@ -262,12 +260,12 @@ for i in $(seq 0 $(( ${#taker_utxo_idxs[@]} - 1 ))); do
     echo "${taker_utxo_idxs[$i]}: ${utxo_amounts_filtered[${taker_utxo_idxs[$i]}]} ${utxo_addresses_filtered[${taker_utxo_idxs[$i]}]}"
 done
 
-if is_btc_gte "$taker_amount" "$current_mixdepth_inputs_sum"; then
+if is_btc_gte "$taker_amount" "$current_set_inputs_sum"; then
     echoerr "Not enough good inputs, aborting."
     exit 1
 fi
 
-taker_change_amount="$(bc_float_calc "$current_mixdepth_inputs_sum - $taker_amount")"
+taker_change_amount="$(bc_float_calc "$current_set_inputs_sum - $taker_amount")"
 if [ "$input_type" == "p2pkh" ]; then
     taker_change_amount="$(bc_float_calc "$taker_change_amount - ($TX_P2PKH_OUT_SIZE * 0.00000001)")"
 else
