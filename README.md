@@ -32,4 +32,6 @@ $ ./ricochet-send.sh 0.001 1andreas3batLhQa2FawWjeyjCqyBzypd 5 $(./estimatesmart
 ```
 ## Support
 
-If you find these scripts useful, you can support development by sending some Bitcoin to 3LQqpQoG329BxouJDcjUAKg3mo26mR3bJ2.
+[![tippin.me](https://badgen.net/badge/%E2%9A%A1%EF%B8%8Ftippin.me/@kristapsk/F0918E)](https://tippin.me/@kristapsk)
+
+If you find these scripts useful, you can support development by sending some Bitcoin to 3LQqpQoG329BxouJDcjUAKg3mo26mR3bJ2. Or use tippin.me link above for tips via Lightning Network.
