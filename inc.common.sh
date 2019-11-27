@@ -77,7 +77,7 @@ function calc_tx_vsize()
         tx_vsize=$(( $tx_vsize + $p2wpkh_in_count * ($TX_P2WPKH_IN_SIZE * 4 + $TX_P2WPKH_WITNESS_SIZE * 3) ))
         tx_vsize=$(( $tx_vsize + $p2pkh_out_count * $TX_P2PKH_OUT_SIZE * 4 ))
         tx_vsize=$(( $tx_vsize + $p2sh_out_count * $TX_P2SH_OUT_SIZE * 4 ))
-        tx_visze=$(( $tx_vsize + $p2wpkh_out_count * $TX_P2WPKH_OUT_SIZE * 4 ))
+        tx_vsize=$(( $tx_vsize + $p2wpkh_out_count * $TX_P2WPKH_OUT_SIZE * 4 ))
         tx_vsize=$(( ($tx_vsize + 1) / 4 ))
         echo $tx_vsize
     fi
