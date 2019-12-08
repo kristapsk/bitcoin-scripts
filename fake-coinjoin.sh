@@ -12,7 +12,9 @@ fi
 
 # Some configs, names match of those of JoinMarket and values are JM defaults
 
-# Estimated blocks to confirm when calculating TX fees
+# Transaction fee to use
+# Values below 1000 are treated as estimated blocks to confirm,
+# 1000 and above as sat/kB.
 tx_fees=3
 # Abort if TX fee per KB is above this number (satoshis)
 absurd_fee_per_kb=150000
@@ -33,10 +35,14 @@ DUST_THRESHOLD=27300
 amount=$(echo "$1" | btc_amount_format)
 shift
 
-fee=$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)
-if [ "$fee" == "" ]; then
-    echoerr "estimatesmartfee failed"
-    exit 1
+if (( $tx_fees >= 1000 )); then
+    fee=$(echo "$tx_fees * 0.00000001" | bc | btc_amount_format)
+else
+    fee=$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)
+    if [ "$fee" == "" ]; then
+        echoerr "estimatesmartfee failed"
+        exit 1
+    fi
 fi
 minrelayfee=$(call_bitcoin_cli getnetworkinfo | jq_btc_float ".relayfee")
 if is_btc_lt "$fee" "$minrelayfee"; then
