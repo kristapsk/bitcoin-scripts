@@ -6,6 +6,7 @@ if [ "$1" == "" ]; then
     echo "Usage: $(basename $0) timestr"
     echo "Where:"
     echo "  timestr     - any date/time string recognized by date command"
+    exit 0
 fi
 
 target_timestr="$1"
