@@ -3,7 +3,7 @@
 . $(dirname $0)/inc.common.sh
 
 if [ "$1" == "" ]; then
-    echo "Usage: $(basename $0) timestr"
+    echo "Usage: $(basename $0) [options] timestr"
     echo "Where:"
     echo "  timestr     - any date/time string recognized by date command"
     exit 0
