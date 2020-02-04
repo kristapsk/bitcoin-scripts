@@ -78,8 +78,8 @@
 @test "Bech32 testnet address validation" {
     testnet=1
     addresses=()
-	addresses+=("tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7")
-	addresses+=("tb1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesrxh6hy")
+    addresses+=("tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7")
+    addresses+=("tb1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesrxh6hy")
 
     for i in $(seq 0 $(( ${#addresses[@]} - 1 )) ); do
         is_valid_bitcoin_address ${addresses[$i]}
