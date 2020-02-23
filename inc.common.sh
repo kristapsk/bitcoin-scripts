@@ -265,9 +265,14 @@ function show_decoded_tx_for_human()
                 inputtx="$(echo "$inputtx" | call_bitcoin_cli -stdin decoderawtransaction)"
             fi
             if [ "$inputtx" != "" ]; then
+                inputaddress="$(echo "$inputtx" | jq -r ".vout[${input_vouts[$i]}].scriptPubKey.addresses[0]")"
                 inputvalue="$(echo "$inputtx" | jq ".vout[${input_vouts[$i]}].value" | btc_amount_format)"
                 if [ "$inputvalue" != "0.00000000" ]; then
-                    echo -n " ($inputvalue BTC)"
+                    echo -n " ($inputvalue BTC"
+                    if [ "$inputaddress" != "none" ]; then
+                        echo -n " -> $inputaddress"
+                    fi
+                    echo -n ")"
                 fi
             fi
             echo
@@ -282,14 +287,15 @@ function show_decoded_tx_for_human()
         echo "(none)"
     else
         for i in $(seq 0 $(( ${#output_addresses[@]} - 1 )) ); do
-            if [ "${output_addresses[$i]}" != "null" ]; then
-                echo -n "* ${output_addresses[$i]}"
-            else
-                echo -n "* ${output_asms[$i]}"
-            fi
+            echo -n "* "
             amount="$(echo ${output_values[$i]} | btc_amount_format)"
             if [ "$amount" != "0.00000000" ]; then
-                echo -n " -> $amount BTC"
+                echo -n "$amount BTC -> "
+            fi
+            if [ "${output_addresses[$i]}" != "null" ]; then
+                echo -n "${output_addresses[$i]}"
+            else
+                echo -n "${output_asms[$i]}"
             fi
             echo
         done
