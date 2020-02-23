@@ -222,7 +222,7 @@ function show_tx_by_id()
 {
     rawtx=$(try_bitcoin_cli getrawtransaction "$1")
     if [ "$rawtx" == "" ]; then
-        rawtx=$(try_bitcoin_cli gettransaction "$1" | jq -r ".hex")
+        rawtx=$(try_bitcoin_cli gettransaction "$1" true | jq -r ".hex")
     fi
     if [ "$rawtx" == "" ]; then
         echoerr "Failed to get transaction $1."
@@ -236,7 +236,7 @@ function show_decoded_tx_for_human()
 {
     decodedtx="$1"
     txid="$(echo "$1" | jq -r ".txid")"
-    wallettxdata="$(try_bitcoin_cli gettransaction "$txid")"
+    wallettxdata="$(try_bitcoin_cli gettransaction "$txid" true)"
     echo "TxID: $txid"
     echo "----------------------------------------------------------------------"
     echo "Size: $(echo "$1" | jq -r ".vsize") vB"
@@ -300,7 +300,7 @@ function show_decoded_tx_for_human()
 
 function get_tx_confirmations()
 {
-    confirmations=$(try_bitcoin_cli gettransaction "$1" | jq ".confirmations")
+    confirmations=$(try_bitcoin_cli gettransaction "$1" true | jq ".confirmations")
     if [ "$confirmations" == "" ]; then
         confirmations=0
     fi
