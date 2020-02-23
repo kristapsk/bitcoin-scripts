@@ -213,7 +213,51 @@ function sha256d()
 
 function show_tx_by_id()
 {
-    call_bitcoin_cli getrawtransaction "$1" | call_bitcoin_cli -stdin decoderawtransaction
+    rawtx=$(try_bitcoin_cli getrawtransaction "$1")
+    if [ "$rawtx" == "" ]; then
+        rawtx=$(try_bitcoin_cli gettransaction "$1" | jq -r ".hex")
+    fi
+    if [ "$rawtx" == "" ]; then
+        echoerr "Failed to get transaction $1."
+        echoerr "Use -txindex with Bitcoin Core to enable non-wallet and non-mempool blockchain transaction support."
+        kill $$
+    fi
+    echo "$rawtx" | call_bitcoin_cli -stdin decoderawtransaction
+}
+
+function show_decoded_tx_for_human()
+{
+    decodedtx="$1"
+    echo -n "TxID: "
+    echo "$1" | jq -r ".txid"
+    echo "----------------------------------------------------------------------"
+    echo "Size: $(echo "$1" | jq -r ".vsize") vB"
+
+    echo "Input(s):"
+    readarray -t input_txids < <( echo "$1" | jq -r ".vin[].txid" )
+    readarray -t input_vouts < <( echo "$1" | jq ".vin[].vout" )
+    if (( ${#input_txids[@]} == 0 )); then
+        echo "(none)"
+    else
+        for i in $(seq 0 $(( ${#input_txids[@]} - 1 )) ); do
+            echo "* ${input_txids[$i]}:${input_vouts[$i]}"
+        done
+    fi
+
+    # TODO: support outputs without addresses, e.g. P2PK or OP_RETURN
+    echo "Output(s):"
+    readarray -t output_addresses < <( echo "$1" | jq -r ".vout[].scriptPubKey.addresses[0]" )
+    readarray -t output_values < <( echo "$1" | jq ".vout[].value" )
+    if (( ${#input_txids[@]} == 0 )); then
+        echo "(none)"
+    else
+        for i in $(seq 0 $(( ${#output_addresses[@]} - 1 )) ); do
+            amount="$(echo ${output_values[$i]} | btc_amount_format)"
+            echo "* ${output_addresses[$i]} -> $amount BTC"
+        done
+    fi
+
+    echo "----------------------------------------------------------------------"
 }
 
 function get_tx_confirmations()

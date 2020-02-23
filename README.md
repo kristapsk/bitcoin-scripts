@@ -13,6 +13,7 @@ None of scripts do wallet unlocking by itself, so you must call `bitcoin-cli wal
 | Script | Description |
 | --- | --- |
 | `blockheightat.sh` | Returns last block height before specified date/time. |
+| `checktransaction.sh` | Displays basic information about Bitcoin transaction(s) in human readable form. |
 | `estimatesmartfee.sh` | Calls `bitcoin-cli estimatesmartfee`. |
 | `fake-coinjoin.sh` | Creates transaction that looks like a [CoinJoin](https://bitcoin.org/en/developer-guide#coinjoin) transaction but all the inputs come and change outputs actually go to your own wallet. Could be useful if you want to send identical amount of funds to more than one recipient. |
 | `randbtc.sh` | Outputs random BTC amount in between two amounts provided as arguments. [Round number amounts](https://en.bitcoin.it/Privacy#Round_numbers) can decrease your privacy. |
