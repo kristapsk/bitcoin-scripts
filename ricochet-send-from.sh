@@ -15,6 +15,8 @@ if [ "$2" == "" ]; then
     exit
 fi
 
+check_multiwallet
+
 source_address=$1
 destination_address=$2
 if ! is_valid_bitcoin_address $source_address; then

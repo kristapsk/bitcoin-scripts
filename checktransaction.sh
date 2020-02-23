@@ -10,6 +10,8 @@ if [ "$1" == "" ]; then
     exit
 fi
 
+check_multiwallet
+
 txids=()
 
 if is_valid_bitcoin_address "$1"; then

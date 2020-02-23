@@ -54,6 +54,13 @@ function try_bitcoin_cli()
     $bitcoin_cli "$@" 2> /dev/null
 }
 
+# This will abort script with error message if multiple wallets are loaded
+# and no -rpcwallet parameter is specified.
+function check_multiwallet()
+{
+    call_bitcoin_cli getwalletinfo > /dev/null
+}
+
 function calc_tx_vsize()
 {
     p2pkh_in_count=$1

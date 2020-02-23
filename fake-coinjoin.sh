@@ -31,6 +31,7 @@ DUST_THRESHOLD=27300
 
 # End of configs
 
+check_multiwallet
 
 amount=$(echo "$1" | btc_amount_format)
 shift
