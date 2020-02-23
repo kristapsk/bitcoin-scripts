@@ -235,10 +235,22 @@ function show_tx_by_id()
 function show_decoded_tx_for_human()
 {
     decodedtx="$1"
-    echo -n "TxID: "
-    echo "$1" | jq -r ".txid"
+    txid="$(echo "$1" | jq -r ".txid")"
+    wallettxdata="$(try_bitcoin_cli gettransaction "$txid")"
+    echo "TxID: $txid"
     echo "----------------------------------------------------------------------"
     echo "Size: $(echo "$1" | jq -r ".vsize") vB"
+    if [ "$wallettxdata" != "" ]; then
+        confirmations="$(echo "$wallettxdata" | jq ".confirmations")"
+        if [ "$confirmations" == "null" ]; then
+            echo "Unconfirmed"
+        else
+            blockhash="$(echo "$wallettxdata" | jq -r ".blockhash")"
+            echo "Included in block $blockhash"
+            echo "$confirmations confirmations"
+        fi
+    fi
+    echo
 
     echo "Input(s):"
     readarray -t input_txids < <( echo "$1" | jq -r ".vin[].txid" )
@@ -247,20 +259,39 @@ function show_decoded_tx_for_human()
         echo "(none)"
     else
         for i in $(seq 0 $(( ${#input_txids[@]} - 1 )) ); do
-            echo "* ${input_txids[$i]}:${input_vouts[$i]}"
+            echo -n "* ${input_txids[$i]}:${input_vouts[$i]}"
+            inputtx="$(try_bitcoin_cli getrawtransaction "${input_txids[$i]}")"
+            if [ "$inputtx" != "" ]; then
+                inputtx="$(echo "$inputtx" | call_bitcoin_cli -stdin decoderawtransaction)"
+            fi
+            if [ "$inputtx" != "" ]; then
+                inputvalue="$(echo "$inputtx" | jq ".vout[${input_vouts[$i]}].value" | btc_amount_format)"
+                if [ "$inputvalue" != "0.00000000" ]; then
+                    echo -n " ($inputvalue BTC)"
+                fi
+            fi
+            echo
         done
     fi
 
-    # TODO: support outputs without addresses, e.g. P2PK or OP_RETURN
     echo "Output(s):"
     readarray -t output_addresses < <( echo "$1" | jq -r ".vout[].scriptPubKey.addresses[0]" )
+    readarray -t output_asms < <( echo "$1" | jq -r ".vout[].scriptPubKey.asm" )
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" )
     if (( ${#input_txids[@]} == 0 )); then
         echo "(none)"
     else
         for i in $(seq 0 $(( ${#output_addresses[@]} - 1 )) ); do
+            if [ "${output_addresses[$i]}" != "null" ]; then
+                echo -n "* ${output_addresses[$i]}"
+            else
+                echo -n "* ${output_asms[$i]}"
+            fi
             amount="$(echo ${output_values[$i]} | btc_amount_format)"
-            echo "* ${output_addresses[$i]} -> $amount BTC"
+            if [ "$amount" != "0.00000000" ]; then
+                echo -n " -> $amount BTC"
+            fi
+            echo
         done
     fi
 
