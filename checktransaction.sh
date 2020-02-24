@@ -16,15 +16,17 @@ txids=()
 
 if is_valid_bitcoin_address "$1"; then
     addr_txids=$(call_bitcoin_cli listreceivedbyaddress 0 true true "$1" | jq -r ".[].txids[]")
-    while read txid; do
-        txids+=("$txid")
-    done <<< "$addr_txids"
+    if [ "$addr_txids" != "" ]; then
+        while read txid; do
+            txids+=("$txid")
+        done <<< "$addr_txids"
+    fi
 else
     txids+=("$1")
 fi
 
 if (( ${#txids[@]} == 0 )); then
-    echo "No transactions."
+    echo "No known transactions."
     exit
 fi
 
