@@ -260,7 +260,13 @@ function show_decoded_tx_for_human()
         echo "(none)"
     else
         for i in $(seq 0 $(( ${#input_txids[@]} - 1 )) ); do
-            echo -n "* ${input_txids[$i]}:${input_vouts[$i]}"
+            echo -n "* "
+            if   [ "${input_txids[$i]}" == "null" ] && \
+                 [ "${input_vouts[$i]}" == "null" ]; then
+                echo -n "(Coinbase)"
+            else
+                echo -n "${input_txids[$i]}:${input_vouts[$i]}"
+            fi
             inputtx="$(try_bitcoin_cli getrawtransaction "${input_txids[$i]}")"
             if [ "$inputtx" == "" ]; then
                 inputtx="$(try_bitcoin_cli gettransaction "${input_txids[$i]}")"
