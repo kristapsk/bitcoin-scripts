@@ -296,6 +296,7 @@ function show_decoded_tx_for_human()
     readarray -t output_addresses < <( echo "$1" | jq -r ".vout[].scriptPubKey.addresses[0]" )
     readarray -t output_asms < <( echo "$1" | jq -r ".vout[].scriptPubKey.asm" )
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" )
+    readarray -t equal_output_values < <( echo "${output_values[@]}" | tr ' ' '\n' | sort | uniq -D | uniq )
     if (( ${#input_txids[@]} == 0 )); then
         echo "(none)"
     else
@@ -309,6 +310,11 @@ function show_decoded_tx_for_human()
                 echo -n "${output_addresses[$i]}"
             else
                 echo -n "${output_asms[$i]}"
+            fi
+            if [ "$amount" != "0.00000000" ]; then
+                if [[ " ${equal_output_values[@]} " =~ " ${output_values[$i]} " ]]; then
+                    echo -n " [cjout?]"
+                fi
             fi
             echo
         done
