@@ -228,8 +228,9 @@ function show_tx_by_id()
         echoerr "Failed to get transaction $1."
         echoerr "Use -txindex with Bitcoin Core to enable non-wallet and non-mempool blockchain transaction support."
         kill $$
+    else
+        echo "$rawtx" | call_bitcoin_cli -stdin decoderawtransaction
     fi
-    echo "$rawtx" | call_bitcoin_cli -stdin decoderawtransaction
 }
 
 function show_decoded_tx_for_human()
