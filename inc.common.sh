@@ -218,11 +218,15 @@ function sha256d()
     echo -en "$(sha256sum | grep -Eo "[a-z0-9]{64}" | sed 's/.\{2\}/\\x&/g')" | sha256sum | grep -Eo "[a-z0-9]{64}"
 }
 
+# show_tx_by_id txid [blockhash]
 function show_tx_by_id()
 {
-    rawtx=$(try_bitcoin_cli getrawtransaction "$1")
+    rawtx="$(try_bitcoin_cli getrawtransaction "$1")"
     if [ "$rawtx" == "" ]; then
-        rawtx=$(try_bitcoin_cli gettransaction "$1" true | jq -r ".hex")
+        rawtx="$(try_bitcoin_cli gettransaction "$1" true | jq -r ".hex")"
+    fi
+    if [ "$rawtx" == "" ] && [ "$2" != "" ]; then
+        rawtx="$(try_bitcoin_cli getrawtransaction "$1" false "$2")"
     fi
     if [ "$rawtx" == "" ]; then
         echoerr "Failed to get transaction $1."

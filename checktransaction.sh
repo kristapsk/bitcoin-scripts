@@ -3,10 +3,11 @@
 . "$(dirname "$0")/inc.common.sh"
 
 if [ "$1" == "" ]; then
-    echo "Usage: $(basename "$0") [options] txid|address"
+    echo "Usage: $(basename "$0") [options] txid|address [blockhash]"
     echo "Where:"
-    echo "  txid    - transaction id"
-    echo "  address - Bitcoin address (shows transactions received to address)"
+    echo "  txid        - transaction id"
+    echo "  address     - Bitcoin address (shows transactions received to address)"
+    echo "  blockhash   - optional blockhash for a block where to look for a non-wallet / non-mempool tx"
     exit
 fi
 
@@ -25,12 +26,14 @@ else
     txids+=("$1")
 fi
 
+blockhash="$2"
+
 if (( ${#txids[@]} == 0 )); then
     echo "No known transactions."
     exit
 fi
 
 for i in $(seq 0 $(( ${#txids[@]} - 1 )) ); do
-    show_decoded_tx_for_human "$(show_tx_by_id "${txids[$i]}")"
+    show_decoded_tx_for_human "$(show_tx_by_id "${txids[$i]}" "$blockhash")"
     echo
 done
