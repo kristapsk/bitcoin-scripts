@@ -11,7 +11,7 @@ done
 
 echo
 
-echo y | "$(dirname "$0")/../../fake-coinjoin.sh" -regtest 1 "${destination_addresses[@]}"
+echo y | "$(dirname "$0")/../../fake-coinjoin.sh" "${bitcoin_args[@]:?}" 1 "${destination_addresses[@]}"
 
 for i in $(seq 0 2); do
     destination_amount="$($bitcoin_cli getreceivedbyaddress "${destination_addresses[$i]}" 0)"
