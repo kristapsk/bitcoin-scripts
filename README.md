@@ -16,6 +16,7 @@ None of scripts do wallet unlocking by itself, so you must call `bitcoin-cli wal
 | `checktransaction.sh` | Displays basic information about Bitcoin transaction(s) in human readable form. |
 | `estimatesmartfee.sh` | Calls `bitcoin-cli estimatesmartfee`. |
 | `fake-coinjoin.sh` | Creates transaction that looks like a [CoinJoin](https://bitcoin.org/en/developer-guide#coinjoin) transaction but all the inputs come and change outputs actually go to your own wallet. Could be useful if you want to send identical amount of funds to more than one recipient. |
+| `listpossiblecjtxids.sh` | Lists txid's of transactions in given block that could potentially be CoinJoin transactions. Note that it does not analyze input amounts (as it's hard to do without -txindex), so will likely give a lot of false positives. |
 | `randbtc.sh` | Outputs random BTC amount in between two amounts provided as arguments. [Round number amounts](https://en.bitcoin.it/Privacy#Round_numbers) can decrease your privacy. |
 | `ricochet-send.sh` | Implements [Ricochet Send](https://samouraiwallet.com/ricochet), which adds extra hops between the input(s) from your wallet and destination. |
 | `ricochet-send-from.sh` | Alternative implementation of Ricochet Send where instead of specifying amount to send you specify source address and all coins from that address is sent. |
