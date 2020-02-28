@@ -237,11 +237,37 @@ function show_tx_by_id()
     fi
 }
 
+# is_likely_cj_tx decodedtx
+function is_likely_cj_tx()
+{
+    decodedtx="$1"
+    # Possible CJ tx rules:
+    #   1) multiple equal value outputs
+    #   2) number of inputs >= number of equal value outputs
+    #   3) number of value outputs between number of outputs matching (1) to that * 2
+    input_count="$(jq ".vin | length" <<< "$decodedtx")"
+    readarray -t output_values < <( echo "$1" | jq ".vout[].value" | grep -v "^0$" )
+    readarray -t equal_output_values < <( echo "${output_values[@]}" | tr ' ' '\n' | sort | uniq -D | uniq )
+    if \
+        (( ${#equal_output_values[@]} > 0 )) && \
+        (( $input_count >= ${#equal_output_values[@]} )) && \
+        (( \
+            ${#output_values[@]} >= ${#equal_output_values[@]} || \
+            ${#output_values[@]} <= $(( ${#equal_output_values[@]} * 2 )) \
+        ))
+    then
+        echo "1"
+    else
+        echo ""
+    fi
+}
+
 function show_decoded_tx_for_human()
 {
     decodedtx="$1"
     txid="$(echo "$1" | jq -r ".txid")"
     wallettxdata="$(try_bitcoin_cli gettransaction "$txid" true)"
+    is_likely_cj="$(is_likely_cj_tx "$decodedtx")"
     echo "TxID: $txid"
     echo "----------------------------------------------------------------------"
     echo "Size: $(echo "$1" | jq -r ".vsize") vB"
@@ -300,7 +326,9 @@ function show_decoded_tx_for_human()
     readarray -t output_addresses < <( echo "$1" | jq -r ".vout[].scriptPubKey.addresses[0]" )
     readarray -t output_asms < <( echo "$1" | jq -r ".vout[].scriptPubKey.asm" )
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" )
-    readarray -t equal_output_values < <( echo "${output_values[@]}" | tr ' ' '\n' | sort | uniq -D | uniq )
+    if [ "$is_likely_cj" ]; then
+        readarray -t equal_output_values < <( echo "${output_values[@]}" | tr ' ' '\n' | sort | uniq -D | uniq )
+    fi
     if (( ${#input_txids[@]} == 0 )); then
         echo "(none)"
     else
@@ -315,7 +343,7 @@ function show_decoded_tx_for_human()
             else
                 echo -n "${output_asms[$i]}"
             fi
-            if [ "$amount" != "0.00000000" ]; then
+            if [ "$is_likely_cj" ] && [ "$amount" != "0.00000000" ]; then
                 if [[ " ${equal_output_values[@]} " =~ " ${output_values[$i]} " ]]; then
                     echo -n " [cjout?]"
                 fi
