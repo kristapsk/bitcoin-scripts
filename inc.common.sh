@@ -249,13 +249,19 @@ function is_likely_cj_tx()
     input_count="$(jq ".vin | length" <<< "$decodedtx")"
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" | grep -v "^0$" )
     readarray -t equal_output_values < <( echo "${output_values[@]}" | tr ' ' '\n' | sort | uniq -D | uniq )
+    equal_output_count=0
+    for i in $(seq 0 $(( ${#output_values[@]} - 1 )) ); do
+        if [[ " ${equal_output_values[@]} " =~ " ${output_values[$i]} " ]]; then
+            ((equal_output_count++))
+        fi
+    done
     if \
         (( $input_count >= 2 )) && \
         (( ${#equal_output_values[@]} > 0 )) && \
-        (( $input_count >= ${#equal_output_values[@]} )) && \
+        (( $input_count >= $equal_output_count )) && \
         (( \
-            ${#output_values[@]} >= ${#equal_output_values[@]} || \
-            ${#output_values[@]} <= $(( ${#equal_output_values[@]} * 2 )) \
+            ${#output_values[@]} >= $equal_output_count || \
+            ${#output_values[@]} <= $(( $equal_output_count * 2 )) \
         ))
     then
         echo "1"
