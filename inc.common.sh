@@ -259,10 +259,8 @@ function is_likely_cj_tx()
         (( $input_count >= 2 )) && \
         (( ${#equal_output_values[@]} > 0 )) && \
         (( $input_count >= $equal_output_count )) && \
-        (( \
-            ${#output_values[@]} >= $equal_output_count || \
-            ${#output_values[@]} <= $(( $equal_output_count * 2 )) \
-        ))
+        (( ${#output_values[@]} >= $equal_output_count )) && \
+        (( ${#output_values[@]} <= $(( $equal_output_count * 2 )) ))
     then
         echo "1"
     else
