@@ -281,7 +281,7 @@ function show_decoded_tx_for_human()
     echo "Size: $(echo "$1" | jq -r ".vsize") vB"
     if [ "$wallettxdata" != "" ]; then
         confirmations="$(echo "$wallettxdata" | jq ".confirmations")"
-        if [ "$confirmations" == "null" ]; then
+        if [ "$confirmations" == "null" ] || [ "$confirmations" == "0" ]; then
             echo "Unconfirmed"
         else
             blockhash="$(echo "$wallettxdata" | jq -r ".blockhash")"
