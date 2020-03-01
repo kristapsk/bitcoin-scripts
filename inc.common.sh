@@ -237,6 +237,20 @@ function show_tx_by_id()
     fi
 }
 
+# is_omni_tx decodedtx
+function is_omni_tx()
+{
+    decodedtx="$1"
+    readarray -t omni_scripts < \
+        <( echo "$1" | jq -r ".vout[].scriptPubKey.asm" | \
+            grep "^OP_RETURN 6f6d6e69")
+    if (( ${#omni_scripts[@]} > 0 )); then
+        echo "1"
+    else
+        echo ""
+    fi
+}
+
 # is_likely_cj_tx decodedtx
 function is_likely_cj_tx()
 {
@@ -260,7 +274,8 @@ function is_likely_cj_tx()
         (( ${#equal_output_values[@]} > 0 )) && \
         (( $input_count >= $equal_output_count )) && \
         (( ${#output_values[@]} >= $equal_output_count )) && \
-        (( ${#output_values[@]} <= $(( $equal_output_count * 2 )) ))
+        (( ${#output_values[@]} <= $(( $equal_output_count * 2 )) )) && \
+        [[ ! $(is_omni_tx "$decodedtx") ]]
     then
         echo "1"
     else
