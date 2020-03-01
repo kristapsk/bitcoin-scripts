@@ -257,7 +257,7 @@ function is_likely_cj_tx()
     decodedtx="$1"
     # Possible CJ tx rules:
     #   1) input count is 2 or more
-    #   2) multiple equal value outputs
+    #   2) multiple equal value outputs to 2 or more different addresses
     #   3) number of inputs >= number of equal value outputs
     #   4) number of value outputs between number of outputs matching (1) to that * 2
     input_count="$(jq ".vin | length" <<< "$decodedtx")"
@@ -280,6 +280,7 @@ function is_likely_cj_tx()
     if \
         (( $input_count >= 2 )) && \
         (( ${#equal_output_values[@]} > 0 )) && \
+        (( ${#unique_equal_output_addresses[@]} > 1 )) && \
         (( $input_count >= $equal_output_count )) && \
         (( ${#output_values[@]} >= $equal_output_count )) && \
         (( ${#output_values[@]} <= $(( $equal_output_count * 2 )) )) && \
