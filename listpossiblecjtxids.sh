@@ -4,12 +4,18 @@
 . "$(dirname "$0")/inc.common.sh"
 
 if [ "$1" == "" ]; then
-    echo "Usage: $(basename "$0") blockheight"
+    echo "Usage: $(basename "$0") blockhash|blockheight"
     exit
 fi
 
-blockheight="$1"
-blockhash="$(call_bitcoin_cli getblockhash "$blockheight")"
+block="$1"
+if grep -qE "[0-9a-z]{32}" <<< "$block"; then
+    blockhash="$block"
+    blockheight="$(call_bitcoin_cli getblockheader "$block" | jq ".height")"
+else
+    blockheight="$block"
+    blockhash="$(call_bitcoin_cli getblockhash "$block")"
+fi
 
 echo "Block $blockheight ($blockhash)"
 
