@@ -293,6 +293,16 @@ function is_likely_cj_tx()
     fi
 }
 
+function hr()
+{
+    if which tput > /dev/null 2>&1; then
+        COLS=$(tput cols)
+    else
+        COLS=78
+    fi
+    printf "%0*d\n" $COLS | tr 0 ${1:--}
+}
+
 function show_decoded_tx_for_human()
 {
     decodedtx="$1"
@@ -300,7 +310,7 @@ function show_decoded_tx_for_human()
     wallettxdata="$(try_bitcoin_cli gettransaction "$txid" true)"
     is_likely_cj="$(is_likely_cj_tx "$decodedtx")"
     echo "TxID: $txid"
-    echo "----------------------------------------------------------------------"
+    hr
     echo "Size: $(echo "$1" | jq -r ".vsize") vB"
     if [ "$wallettxdata" != "" ]; then
         confirmations="$(echo "$wallettxdata" | jq ".confirmations")"
@@ -382,8 +392,7 @@ function show_decoded_tx_for_human()
             echo
         done
     fi
-
-    echo "----------------------------------------------------------------------"
+    hr
 }
 
 function get_tx_confirmations()
