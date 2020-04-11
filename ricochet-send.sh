@@ -62,7 +62,6 @@ read -p "Is this ok? " -n 1 -r
 echo
 
 if ! [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo NOT
     exit
 fi
 
