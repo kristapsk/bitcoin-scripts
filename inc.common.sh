@@ -27,6 +27,9 @@ TX_P2WPKH_IN_SIZE=18
 TX_P2WPKH_WITNESS_SIZE=109
 TX_P2WPKH_OUT_SIZE=33
 
+MAINNET_ADDRESS_REGEX="\([13][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|bc1[a-z0-9]\{8,87\}\|BC1[A-Z0-9]\{8,87\}\)"
+TESTNET_ADDRESS_REGEX="\([mn2][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|tb1[a-z0-9]\{8,87\}\|TB1[A-Z0-9]\{8,87\}\)"
+
 # Common useful functions
 
 function echoerr()
@@ -173,10 +176,10 @@ function is_btc_lt()
 function is_valid_bitcoin_address()
 {
     if [ "$testnet" == "1" ]; then
-        echo $1 | LANG=POSIX grep -qse '^\([mn2][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|tb1[a-z0-9]\{8,87\}\|TB1[A-Z0-9]\{8,87\}\)$'
+        echo $1 | LANG=POSIX grep -qse "^${TESTNET_ADDRESS_REGEX}\$"
         return $?
     else
-        echo $1 | LANG=POSIX grep -qse  '^\([13][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|bc1[a-z0-9]\{8,87\}\|BC1[A-Z0-9]\{8,87\}\)$'
+        echo $1 | LANG=POSIX grep -qse "^${MAINNET_ADDRESS_REGEX}\$"
         return $?
     fi
 }
@@ -425,5 +428,46 @@ function legacy_tx_hexstring_to_txid()
 {
     # sed magic from https://unix.stackexchange.com/questions/321860/reverse-a-hexadecimal-number-in-bash
     echo -en "$(sed 's/.\{2\}/\\x&/g')" | sha256d | sed -e 'G;:1' -e 's/\(..\)\(.*\n\)/\2\1/;t1' -e 's/.//'
+}
+
+# https://stackoverflow.com/a/42636717
+function urldecode()
+{
+    while read; do
+        echo -e ${REPLY//%/\\x}
+    done
+}
+
+function is_bip21_uri()
+{
+    if [ "$testnet" == "1" ]; then
+        ADDRESS_REGEX="$TESTNET_ADDRESS_REGEX"
+    else
+        ADDRESS_REGEX="$MAINNET_ADDRESS_REGEX"
+    fi
+    if grep -qs "^bitcoin:${ADDRESS_REGEX}" <<< "$1"; then
+        echo "1"
+    fi
+}
+
+function bip21_get_address()
+{
+    if [ $(is_bip21_uri "$1") ]; then
+        if [ "$testnet" == "1" ]; then
+            grep -o "$TESTNET_ADDRESS_REGEX" <<< "$1"
+        else
+            grep -o "$MAINNET_ADDRESS_REGEX" <<< "$1"
+        fi
+    fi
+}
+
+function bip21_get_param()
+{
+    key="$2"
+    if [ $(is_bip21_uri "$1") ]; then
+        if grep -qs "${key}=" <<< "$1"; then
+            echo "$1" | sed "s/.*${key}=//" | sed "s/&.*//" | urldecode
+        fi
+    fi
 }
 
