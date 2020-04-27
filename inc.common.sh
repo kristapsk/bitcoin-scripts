@@ -445,7 +445,7 @@ function is_bip21_uri()
     else
         ADDRESS_REGEX="$MAINNET_ADDRESS_REGEX"
     fi
-    if grep -qs "^bitcoin:${ADDRESS_REGEX}" <<< "$1"; then
+    if LANG=POSIX grep -qs "^bitcoin:${ADDRESS_REGEX}" <<< "$1"; then
         echo "1"
     fi
 }
@@ -454,9 +454,9 @@ function bip21_get_address()
 {
     if [ $(is_bip21_uri "$1") ]; then
         if [ "$testnet" == "1" ]; then
-            grep -o "$TESTNET_ADDRESS_REGEX" <<< "$1"
+            LANG=POSIX grep -o "$TESTNET_ADDRESS_REGEX" <<< "$1"
         else
-            grep -o "$MAINNET_ADDRESS_REGEX" <<< "$1"
+            LANG=POSIX grep -o "$MAINNET_ADDRESS_REGEX" <<< "$1"
         fi
     fi
 }
