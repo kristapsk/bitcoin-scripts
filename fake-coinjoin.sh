@@ -221,14 +221,11 @@ if [ "$input_type" == "p2pkh" ]; then
     tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2PKH_IN_SIZE ))
     tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2PKH_OUT_SIZE ))
 else
-    tx_vsize=$(( $tx_vsize * 4 ))
-    tx_vsize=$(( $tx_vsize + $TX_FIXED_SIZE * 3 + $TX_SEGWIT_FIXED_SIZE ))
+    tx_vsize=$(( $tx_vsize + $TX_SEGWIT_FIXED_SIZE ))
     # P2SH segwit maker inputs
-    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * ( $TX_P2SH_SEGWIT_IN_SIZE * 4 + $TX_P2SH_SEGWIT_WITNESS_SIZE * 3 ) ))
+    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2SH_SEGWIT_IN_SIZE ))
     # P2SH maker change outputs (recipient outputs already calculated above)
-    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2SH_OUT_SIZE * 4 ))
-    # real size
-    tx_vsize=$(( ($tx_vsize + 1) / 4 ))
+    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2SH_OUT_SIZE ))
 fi
 
 # Calculate taker fee
@@ -257,10 +254,8 @@ do
         tx_vsize=$(( $tx_vsize + $TX_P2PKH_IN_SIZE ))
         taker_amount=$(bc_float_calc "$taker_amount + $TX_P2PKH_IN_SIZE * $fee * 0.001")
     else
-        additional_tx_vsize=$(( $TX_P2SH_SEGWIT_IN_SIZE * 4 + $TX_P2SH_SEGWIT_WITNESS_SIZE * 3 ))
-        additional_tx_vsize=$(( ($additional_tx_vsize + 1) / 4 ))
-        tx_vsize=$(( $tx_vsize + $additional_tx_vsize ))
-        taker_amount=$(bc_float_calc "$taker_amount + $additional_tx_vsize * $fee * 0.001")
+        tx_vsize=$(( $tx_vsize + $TX_P2SH_SEGWIT_IN_SIZE ))
+        taker_amount=$(bc_float_calc "$taker_amount + $TX_P2SH_SEGWIT_IN_SIZE * $fee * 0.001")
     fi
 done
 
