@@ -351,6 +351,10 @@ function show_decoded_tx_for_human()
                     if [ "$inputaddress" != "none" ]; then
                         echo -n " -> $inputaddress"
                     fi
+                    inputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$inputaddress" | jq -r ".labels[]")" | tr '\n' ',')"
+                    if [ "$inputlabels" != "" ]; then
+                        echo -n " [$inputlabels]"
+                    fi
                     echo -n ")"
                 fi
             fi
@@ -383,6 +387,10 @@ function show_decoded_tx_for_human()
                 if [[ " ${equal_output_values[@]} " =~ " ${output_values[$i]} " ]]; then
                     echo -n " [cjout?]"
                 fi
+            fi
+            outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "${output_addresses[$i]}" | jq -r ".labels[]")" | tr '\n' ',')"
+            if [ "$outputlabels" != "" ]; then
+                echo -n " [$outputlabels]"
             fi
             echo
         done
