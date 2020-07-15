@@ -350,10 +350,10 @@ function show_decoded_tx_for_human()
                     echo -n " ($inputvalue BTC"
                     if [ "$inputaddress" != "none" ]; then
                         echo -n " -> $inputaddress"
-                    fi
-                    inputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$inputaddress" | jq -r ".labels[]")" | tr '\n' ',')"
-                    if [ "$inputlabels" != "" ]; then
-                        echo -n " [$inputlabels]"
+                        inputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$inputaddress" | jq -r ".labels[]")" | tr '\n' ',')"
+                        if [ "$inputlabels" != "" ]; then
+                            echo -n " [$inputlabels]"
+                        fi
                     fi
                     echo -n ")"
                 fi
@@ -388,9 +388,11 @@ function show_decoded_tx_for_human()
                     echo -n " [cjout?]"
                 fi
             fi
-            outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "${output_addresses[$i]}" | jq -r ".labels[]")" | tr '\n' ',')"
-            if [ "$outputlabels" != "" ]; then
-                echo -n " [$outputlabels]"
+            if [ "${output_addresses[$i]}" != "null" ]; then
+                outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "${output_addresses[$i]}" | jq -r ".labels[]")" | tr '\n' ',')"
+                if [ "$outputlabels" != "" ]; then
+                    echo -n " [$outputlabels]"
+                fi
             fi
             echo
         done
