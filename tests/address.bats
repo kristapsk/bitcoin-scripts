@@ -80,6 +80,7 @@
     addresses=()
     addresses+=("tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7")
     addresses+=("tb1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesrxh6hy")
+    addresses+=("bcrt1qtmp74ayg7p24uslctssvjm06q5phz4yrxucgnv")
 
     for i in $(seq 0 $(( ${#addresses[@]} - 1 )) ); do
         is_valid_bitcoin_address ${addresses[$i]}

@@ -26,7 +26,7 @@ TX_P2WPKH_IN_SIZE=69
 TX_P2WPKH_OUT_SIZE=31
 
 MAINNET_ADDRESS_REGEX="\([13][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|bc1[a-z0-9]\{8,87\}\|BC1[A-Z0-9]\{8,87\}\)"
-TESTNET_ADDRESS_REGEX="\([mn2][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|tb1[a-z0-9]\{8,87\}\|TB1[A-Z0-9]\{8,87\}\)"
+TESTNET_ADDRESS_REGEX="\([mn2][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|\(bcrt1\|tb1\)[a-z0-9]\{8,87\}\|TB1[A-Z0-9]\{8,87\}\)"
 
 # Common useful functions
 
@@ -102,7 +102,7 @@ function is_p2sh_segwit_bitcoin_address()
 
 function is_bech32_bitcoin_address()
 {
-    [[ ${1:0:3} =~ ^(bc|BC|tb|TB)1 ]]
+    [[ ${1:0:3} =~ ^(bc|BC|tb|TB)1 ]] || [[ ${1:0:5} =~ ^(bcrt|BCRT)1 ]]
 }
 
 function get_bitcoin_address_type()
