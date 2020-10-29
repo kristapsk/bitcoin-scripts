@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 
 bitcoin_args="-regtest"
-bitcoind="bitcoind $bitcoin_args"
+bitcoind="bitcoind $bitcoin_args -fallbackfee=0.0002"
 bitcoin_cli="bitcoin-cli $bitcoin_args"
 
 # shellcheck disable=SC2034
