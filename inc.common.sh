@@ -145,6 +145,16 @@ function getnewaddress_p2sh_segwit()
     echo "$address"
 }
 
+function getnewaddress_bech32()
+{
+    address=$(try_bitcoin_cli getnewaddress "" "bech32")
+    if ! is_bech32_bitcoin_address $address; then
+        echoerr "FATAL: don't know how to generate bech32 address!"
+        kill $$
+    fi
+    echo "$address"
+}
+
 # BTC amounts - is "$1" greater than or equal to "$2"
 # Both BTC and satoshi amounts will actually work here
 function is_btc_gte()

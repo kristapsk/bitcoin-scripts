@@ -77,18 +77,13 @@ while (( ${#} > 0 )); do
     shift
 done
 
-if (( $p2pkh_recipient_count > 1 )) && (( $p2sh_recipient_count > 1 )); then
-    echoerr "Only one recipient can be a different kind! (P2PKH or P2SH)"
-    exit 2
-fi
-
-if (( $bech32_recipient_count > 1 )); then
-    echoerr "Only one bech32 recipient is supported currently!"
-    exit 2
-fi
-
-if (( $bech32_recipient_count > 0 )) && (( $p2pkh_recipient_count > 0 )); then
-    echoerr "Bech32 recipient can be combined only with P2SH recipients!"
+if (( $p2pkh_recipient_count > 1 )); then
+    if (( $p2sh_recipient_count > 1 )) || (( $bech32_recipient_count > 1 )); then
+        echoerr "Only one recipient can be a different kind! (P2PKH, P2SH or bech32)"
+        exit 2
+    fi
+elif (( $p2sh_recipient_count > 1 )) && (( $bech32_recipient_count > 1 )); then
+    echoerr "Only one recipient can be a different kind! (P2PKH, P2SH or bech32)"
     exit 2
 fi
 
@@ -97,8 +92,17 @@ if (( ${#recipients[@]} > $(( $TX_OUTPUTS_MAX / 2 )) )); then
     exit 3
 fi
 
-(( $p2pkh_recipient_count > $p2sh_recipient_count )) && \
-    input_type="p2pkh" || input_type="p2sh_segwit"
+if (( $p2pkh_recipient_count > 1 )); then
+    input_type="p2pkh"
+    if (( $bech32_recipient_count > 0 )); then
+        echoerr "Bech32 recipient cannot be combined with multiple P2PKH recipients!"
+        exit 2
+    fi
+elif (( $p2sh_recipient_count > 1 )); then
+    input_type="p2sh_segwit"
+else
+    input_type="bech32"
+fi
 
 echo "Recipients: ${recipients[@]}"
 echo "input_type: $input_type"
@@ -218,12 +222,21 @@ if [ "$input_type" == "p2pkh" ]; then
     tx_vsize=$(( $tx_vsize + $TX_FIXED_SIZE ))
     tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2PKH_IN_SIZE ))
     tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2PKH_OUT_SIZE ))
-else
+elif [ "$input_type" == "p2sh_segwit" ]; then
     tx_vsize=$(( $tx_vsize + $TX_SEGWIT_FIXED_SIZE ))
     # P2SH segwit maker inputs
     tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2SH_SEGWIT_IN_SIZE ))
     # P2SH maker change outputs (recipient outputs already calculated above)
     tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2SH_OUT_SIZE ))
+elif [ "$input_type" == "bech32" ]; then
+    tx_vsize=$(( $tx_vsize + $TX_SEGWIT_FIXED_SIZE ))
+    # Bech32 segwit maker inputs
+    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2WPKH_IN_SIZE ))
+    # Bech32 maker change outputs (recipient outputs already calculated above)
+    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2WPKH_OUT_SIZE ))
+else
+    echoerr "DESIGN ERROR: Invalid input_type $input_type in recipient selection!"
+    exit 3
 fi
 
 # Calculate taker fee
@@ -251,9 +264,15 @@ do
     if [ "$input_type" == "p2pkh" ]; then
         tx_vsize=$(( $tx_vsize + $TX_P2PKH_IN_SIZE ))
         taker_amount=$(bc_float_calc "$taker_amount + $TX_P2PKH_IN_SIZE * $fee * 0.001")
-    else
+    elif [ "$input_type" == "p2sh_segwit" ]; then
         tx_vsize=$(( $tx_vsize + $TX_P2SH_SEGWIT_IN_SIZE ))
         taker_amount=$(bc_float_calc "$taker_amount + $TX_P2SH_SEGWIT_IN_SIZE * $fee * 0.001")
+    elif [ "$input_type" == "bech32" ]; then
+        tx_vsize=$(( $tx_vsize + $TX_P2SH_SEGWIT_IN_SIZE ))
+        taker_amount=$(bc_float_calc "$taker_amount + $TX_P2WPKH_IN_SIZE * $fee * 0.001")
+    else
+        echoerr "DESIGN ERROR: Invalid input_type $input_type in taker input selection!"
+        exit 3
     fi
 done
 
@@ -270,15 +289,25 @@ fi
 taker_change_amount="$(bc_float_calc "$current_set_inputs_sum - $taker_amount")"
 if [ "$input_type" == "p2pkh" ]; then
     taker_change_amount="$(bc_float_calc "$taker_change_amount - ($TX_P2PKH_OUT_SIZE * 0.00000001)")"
-else
+elif [ "$input_type" == "p2sh_segwit" ]; then
     taker_change_amount="$(bc_float_calc "$taker_change_amount - ($TX_P2SH_OUT_SIZE * 0.00000001)")"
+elif [ "$input_type" == "bech32" ]; then
+    taker_change_amount="$(bc_float_calc "$taker_change_amount - ($TX_P2WPKH_OUT_SIZE * 0.00000001)")"
+else
+    echoerr "DESIGN ERROR: Invalid input_type $input_type in taker change amount calculation!"
+    exit 3
 fi
 if is_btc_gte "$taker_change_amount" "$(bc_float_calc "$DUST_THRESHOLD * 0.00000001")"; then
     taker_change_output="$(eval "getnewaddress_$input_type")"
     if [ "$input_type" == "p2pkh" ]; then
         tx_vsize=$(( $tx_vsize + $TX_P2PKH_OUT_SIZE ))
-    else
+    elif [ "$input_type" == "p2sh_segwit" ]; then
         tx_vsize=$(( $tx_vsize + $TX_P2SH_OUT_SIZE ))
+    elif [ "$input_type" == "bech32" ]; then
+        tx_vsize=$(( $tx_vsize + $TX_P2WPKH_OUT_SIZE ))
+    else
+        echoerr "DESIGN ERROR: Invalid input_type $input_type in taker change output fee calculation!"
+        exit 3
     fi
 else
     echo "Not creating dust amount taker change output, adding to the fees."
