@@ -18,8 +18,6 @@ fi
 tx_fees=3
 # Abort if TX fee per KB is above this number (satoshis)
 absurd_fee_per_kb=150000
-# Minimum number of confirmations for UTXO's to be usable
-taker_utxo_age=5
 # Coin selection ("merge") algorithm.
 # Not the same as JM algos currently.
 # "default" is a dumb coin selection, using random order.
@@ -115,7 +113,7 @@ function select_greediest()
     jq -s "sort_by(.amount) | .[]"
 }
 
-utxo="$(call_bitcoin_cli listunspent $taker_utxo_age 999999 "[]" false | jq ".[] | select(.spendable)")"
+utxo="$(call_bitcoin_cli listunspent 1 999999 "[]" false | jq ".[] | select(.spendable)")"
 if [ "$merge_algorithm" == "greediest" ]; then
     utxo="$(echo "$utxo" | select_greediest)"
 else
