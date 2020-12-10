@@ -6,6 +6,12 @@
     [[ "$(is_bip21_uri "bitcoin:175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W")" ]]
     [[ "$(bip21_get_address "bitcoin:175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W")" == "175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W" ]]
 
+    [[ "$(is_bip21_uri "BITCOIN:175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W")" ]]
+    [[ "$(bip21_get_address "BITCOIN:175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W")" == "175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W" ]]
+
+    [[ "$(is_bip21_uri "BitCoin:175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W")" ]]
+    [[ "$(bip21_get_address "BitCoin:175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W")" == "175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W" ]]
+
     [[ "$(is_bip21_uri "bitcoin:175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W?label=Luke-Jr")" ]]
     [[ "$(bip21_get_address "bitcoin:175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W?label=Luke-Jr")" == "175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W" ]]
     [[ "$(bip21_get_param "bitcoin:175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W?label=Luke-Jr" "label")" == "Luke-Jr" ]]

@@ -457,7 +457,7 @@ function is_bip21_uri()
     else
         ADDRESS_REGEX="$MAINNET_ADDRESS_REGEX"
     fi
-    if LANG=POSIX grep -qs "^bitcoin:${ADDRESS_REGEX}" <<< "$1"; then
+    if LANG=POSIX grep -qs "^[Bb][Ii][Tt][Cc][Oo][Ii][Nn]:${ADDRESS_REGEX}" <<< "$1"; then
         echo "1"
     fi
 }
