@@ -21,6 +21,7 @@ None of scripts do wallet unlocking by itself, so you must call `bitcoin-cli wal
 | `ricochet-send.sh` | Implements [Ricochet Send](https://samouraiwallet.com/ricochet), which adds extra hops between the input(s) from your wallet and destination. |
 | `ricochet-send-from.sh` | Alternative implementation of Ricochet Send where instead of specifying amount to send you specify source address and all coins from that address is sent. |
 | `timetoblocks.sh` | Converts human readable time interval string to expected number of Bitcoin blocks. |
+| `whitepaper.sh` | Retrieves PDF of origin Bitcoin Whitepaper by Satoshi Nakamoto from the Bitcoin blockchain. |
 
 ## Examples
 
