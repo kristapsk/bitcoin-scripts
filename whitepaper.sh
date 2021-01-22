@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Based on https://bitcoin.stackexchange.com/a/35970/23146 by Jimmy Song
 
 . $(dirname $0)/inc.common.sh
 
@@ -10,32 +9,47 @@ fi
 
 outfile="$1"
 
-rawtx="$(call_bitcoin_cli getrawtransaction \
-    54e48e5f5c656b26c3bca14a8c95aa583d07ebe84dde3b7dd4a78f4e4186e713 \
-    false \
-    00000000000000ecbbff6bafb7efa2f7df05b227d5c73dca8f2635af32a2e949)"
+wp_txid="54e48e5f5c656b26c3bca14a8c95aa583d07ebe84dde3b7dd4a78f4e4186e713"
+wp_blockhash="00000000000000ecbbff6bafb7efa2f7df05b227d5c73dca8f2635af32a2e949"
 
-if [ "$rawtx" == "" ]; then
-    echo "Couldn't find tx 54e48e5f5c656b26c3bca14a8c95aa583d07ebe84dde3b7dd4a78f4e4186e713."
-    echo "Are you sure you are on the mainnet?"
-    exit 2
+# First, try getting it from the blockchain. It is fastest approach and will
+# also work with old versions ofr Bitcoin Core, but is not compatible with
+# pruning.
+# Based on https://bitcoin.stackexchange.com/a/35970/23146 by Jimmy Song.
+rawtx="$(try_bitcoin_cli getrawtransaction "$wp_txid" false "$wp_blockhash")"
+if [ "$rawtx" != "" ]; then
+    delimiter="0100000000000000"
+    readarray -t outputs < <(echo "$rawtx" | sed "s/$delimiter/\\n/g")
+    need_skip="6"
+    first="1"
+    last="$(( ${#outputs[@]} - 3 ))"
+else
+    # Alternative approach is to get it from the UTXO set, as it was encoded
+    # in bare multisig outputs that will never be spent. Will work with pruned
+    # nodes too.
+    # See https://github.com/kristapsk/bitcoin-scripts/issues/9
+    outputs=()
+    for i in $(seq 0 947); do
+        outputs+=( "$(call_bitcoin_cli gettxout "$wp_txid" "$i" | \
+            jq -r ".scriptPubKey.hex")" )
+    done
+    need_skip="4"
+    first="0"
+    last="$(( ${#outputs[@]} - 4 ))"
 fi
 
-delimiter="0100000000000000"
-readarray -t outputs < <(echo "$rawtx" | sed "s/$delimiter/\\n/g")
-
 pdfhex=""
-for i in $(seq 1 $(( ${#outputs[@]} - 3 )) ); do
+for i in $(seq $first $last); do
     output="${outputs[$i]}"
+    cur="$need_skip"
     # there are 3 65-byte parts in this that we need
-    cur=6
     pdfhex+="${output:$cur:130}"
     cur=$(( $cur + 132 ))
     pdfhex+="${output:$cur:130}"
     cur=$(( $cur + 132 ))
     pdfhex+="${output:$cur:130}"
 done
-output="${outputs[$(( ${#outputs[@]} - 2 ))]}"
-pdfhex+="${output:6:-20}"
+output="${outputs[$(( $last + 1 ))]}"
+pdfhex+="${output:$need_skip:50}"
 
 echo -n "${pdfhex:16}" | xxd -r -p > "$outfile"
