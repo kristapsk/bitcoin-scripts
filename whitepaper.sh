@@ -29,13 +29,13 @@ else
     # nodes too.
     # See https://github.com/kristapsk/bitcoin-scripts/issues/9
     outputs=()
-    for i in $(seq 0 947); do
+    for i in $(seq 0 945); do
         outputs+=( "$(call_bitcoin_cli gettxout "$wp_txid" "$i" | \
             jq -r ".scriptPubKey.hex")" )
     done
     need_skip="4"
     first="0"
-    last="$(( ${#outputs[@]} - 4 ))"
+    last="$(( ${#outputs[@]} - 2 ))"
 fi
 
 pdfhex=""
