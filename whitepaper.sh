@@ -13,7 +13,7 @@ wp_txid="54e48e5f5c656b26c3bca14a8c95aa583d07ebe84dde3b7dd4a78f4e4186e713"
 wp_blockhash="00000000000000ecbbff6bafb7efa2f7df05b227d5c73dca8f2635af32a2e949"
 
 # First, try getting it from the blockchain. It is fastest approach and will
-# also work with old versions ofr Bitcoin Core, but is not compatible with
+# also work with old versions of Bitcoin Core, but is not compatible with
 # pruning.
 # Based on https://bitcoin.stackexchange.com/a/35970/23146 by Jimmy Song.
 rawtx="$(try_bitcoin_cli getrawtransaction "$wp_txid" false "$wp_blockhash")"
