@@ -390,18 +390,27 @@ function show_decoded_tx_for_human()
             fi
             if [ "${output_addresses[$i]}" != "null" ]; then
                 echo -n "${output_addresses[$i]}"
+                if [ "$is_likely_cj" ] && [ "$amount" != "0.00000000" ]; then
+                    if [[ " ${equal_output_values[@]} " =~ " ${output_values[$i]} " ]]; then
+                        echo -n " [cjout?]"
+                    fi
+                fi
+                if [ "${output_addresses[$i]}" != "null" ]; then
+                    outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "${output_addresses[$i]}" | jq -r ".labels[]")" | tr '\n' ',')"
+                    if [ "$outputlabels" != "" ]; then
+                        echo -n " [$outputlabels]"
+                    fi
+                fi
             else
                 echo -n "${output_asms[$i]}"
-            fi
-            if [ "$is_likely_cj" ] && [ "$amount" != "0.00000000" ]; then
-                if [[ " ${equal_output_values[@]} " =~ " ${output_values[$i]} " ]]; then
-                    echo -n " [cjout?]"
-                fi
-            fi
-            if [ "${output_addresses[$i]}" != "null" ]; then
-                outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "${output_addresses[$i]}" | jq -r ".labels[]")" | tr '\n' ',')"
-                if [ "$outputlabels" != "" ]; then
-                    echo -n " [$outputlabels]"
+                # Try decode human readable OP_RETURN's
+                if [[ ${output_asms[$i]} == OP_RETURN* ]]; then
+                    output_asm="${output_asms[$i]}"
+                    data="$(xxd -r -p  <<< "${output_asm:10}" | tr -d '\0')"
+                    data_human="$(tr -cd "[:print:]\n" <<< "$data")"
+                    if [ "$data" == "$data_human" ]; then
+                        echo -en "\n  ($data)"
+                    fi
                 fi
             fi
             echo
@@ -482,4 +491,3 @@ function bip21_get_param()
         fi
     fi
 }
-
