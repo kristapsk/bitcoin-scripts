@@ -5,7 +5,7 @@ testnet=0
 # assume all first parameters beginning with dash are bitcoin-cli options
 while (( ${#} > 0 )) && [[ ${1:0:1} == "-" ]]; do
     bitcoin_cli_options="$bitcoin_cli_options $1"
-    if [ "$1" == "-regtest" ] || [ "$1" == "-testnet" ]; then
+    if [ "$1" == "-regtest" ] || [ "$1" == "-testnet" ] || [ "$1" == "-signet" ]; then
         testnet=1
     fi
     shift
