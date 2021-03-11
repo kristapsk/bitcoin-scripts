@@ -323,7 +323,9 @@ function show_decoded_tx_for_human()
             echo "Unconfirmed"
         else
             blockhash="$(echo "$wallettxdata" | jq -r ".blockhash")"
-            echo "Included in block $blockhash"
+            blockheight="$(echo "$wallettxdata" | jq -r ".blockheight")"
+            blocktime="$(echo "$wallettxdata" | jq -r ".blocktime")"
+            echo "Included in block $blockhash (@$blockheight, $(date --iso-8601="seconds" -d @$blocktime))"
             echo "$confirmations confirmations"
         fi
     fi
