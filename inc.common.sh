@@ -375,6 +375,7 @@ function show_decoded_tx_for_human()
     fi
 
     echo "Output(s):"
+    total_output_sum="0.00000000"
     readarray -t output_addresses < <( echo "$1" | jq -r ".vout[].scriptPubKey.addresses[0]" )
     readarray -t output_asms < <( echo "$1" | jq -r ".vout[].scriptPubKey.asm" )
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" )
@@ -389,6 +390,7 @@ function show_decoded_tx_for_human()
             amount="$(echo ${output_values[$i]} | btc_amount_format)"
             if [ "$amount" != "0.00000000" ]; then
                 echo -n "$amount BTC -> "
+                total_output_sum="$(bc_float_calc "$total_output_sum + $amount")"
             fi
             if [ "${output_addresses[$i]}" != "null" ]; then
                 echo -n "${output_addresses[$i]}"
@@ -417,6 +419,9 @@ function show_decoded_tx_for_human()
             fi
             echo
         done
+        if [ "$total_output_sum" != "0.00000000" ]; then
+            echo -e "\nTotal output sum: $total_output_sum BTC"
+        fi
     fi
     hr
 }
