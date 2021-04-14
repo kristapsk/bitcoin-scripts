@@ -35,18 +35,18 @@ amount=$(echo "$1" | btc_amount_format)
 shift
 
 if (( $tx_fees >= 1000 )); then
-    fee=$(echo "$tx_fees * 0.00000001" | bc | btc_amount_format)
+    fee="$(echo "$tx_fees * 0.00000001" | bc | btc_amount_format)"
 else
-    fee=$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)
+    fee="$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)"
     if [ "$fee" == "" ]; then
         echoerr "estimatesmartfee failed"
         exit 1
     fi
 fi
-minrelayfee=$(call_bitcoin_cli getnetworkinfo | jq_btc_float ".relayfee")
-if is_btc_lt "$fee" "$minrelayfee"; then
-    echo "Fee $fee is below minimum relay fee, raising to $minrelayfee"
-    fee=$minrelayfee
+mempoolminfee="$(call_bitcoin_cli getmempoolinfo | jq_btc_float ".mempoolminfee")"
+if is_btc_lt "$fee" "$mempoolminfee"; then
+    echo "Fee $fee is below minimum mempool fee, raising to $mempoolminfee"
+    fee="$mempoolminfee"
 fi
 if is_btc_gte "$fee" "$(bc_float_calc "$absurd_fee_per_kb * 0.00000001")"; then
     echoerr -n "Estimated fee per KB ($fee) is greater than absurd value: "

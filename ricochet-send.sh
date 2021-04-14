@@ -50,11 +50,11 @@ else
 fi
 
 # Force minimum required fee
-fee=$(echo "$fee" | btc_amount_format)
-minrelayfee=$(call_bitcoin_cli getnetworkinfo | jq_btc_float ".relayfee")
-if is_btc_lt "$fee" "$minrelayfee"; then
-    echo "Fee $fee is below minimum relay fee, raising to $minrelayfee"
-    fee=$minrelayfee
+fee="$(echo "$fee" | btc_amount_format)"
+mempoolminfee="$(call_bitcoin_cli getmempoolinfo | jq_btc_float ".mempoolminfee")"
+if is_btc_lt "$fee" "$mempoolminfee"; then
+    echo "Fee $fee is below minimum mempool fee, raising to $mempoolminfee"
+    fee="$mempoolminfee"
 fi
 
 echo "Ricocheting $amount BTC to $address via $hops hops using $fee fee per KB"

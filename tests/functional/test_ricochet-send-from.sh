@@ -8,7 +8,9 @@ source_address="$(${bitcoin_cli:?} getnewaddress)"
 $bitcoin_cli sendtoaddress "$source_address" 2
 
 destination_address="$($bitcoin_cli getnewaddress)"
-echo y | "$(dirname "$0")/../../ricochet-send-from.sh" "${bitcoin_args[@]:?}" "$source_address" "$destination_address"
+echo y | "$(dirname "$0")/../../ricochet-send-from.sh" \
+    "${bitcoin_args[@]:?}" "$source_address" "$destination_address" \
+    "4" "0.00000999"
 
 source_unspent_count="$($bitcoin_cli listunspent 0 999999 "[\"$source_address\"]" | jq ". | length")"
 if [ "$source_unspent_count" != "0" ]; then
