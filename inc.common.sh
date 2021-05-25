@@ -357,10 +357,13 @@ function show_decoded_tx_for_human()
             fi
             if [ "$inputtx" != "" ]; then
                 inputaddress="$(echo "$inputtx" | jq -r ".vout[${input_vouts[$i]}].scriptPubKey.addresses[0]")"
+                if [ "$inputaddress" == "null" ]; then
+                    inputaddress="$(echo "$inputtx" | jq -r ".vout[${input_vouts[$i]}].scriptPubKey.address")"
+                fi
                 inputvalue="$(echo "$inputtx" | jq ".vout[${input_vouts[$i]}].value" | btc_amount_format)"
                 if [ "$inputvalue" != "0.00000000" ]; then
                     echo -n " ($inputvalue BTC"
-                    if [ "$inputaddress" != "none" ]; then
+                    if [ "$inputaddress" != "none" ] && [ "$input_address" != "null" ]; then
                         echo -n " -> $inputaddress"
                         inputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$inputaddress" | jq -r ".labels[]")" | tr '\n' ',')"
                         if [ "$inputlabels" != "" ]; then
@@ -377,6 +380,7 @@ function show_decoded_tx_for_human()
     echo "Output(s):"
     total_output_sum="0.00000000"
     readarray -t output_addresses < <( echo "$1" | jq -r ".vout[].scriptPubKey.addresses[0]" )
+    readarray -t output_addresses2 < <( echo "$1" | jq -r ".vout[].scriptPubKey.address" )
     readarray -t output_asms < <( echo "$1" | jq -r ".vout[].scriptPubKey.asm" )
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" )
     if [ "$is_likely_cj" ]; then
@@ -393,17 +397,21 @@ function show_decoded_tx_for_human()
                 total_output_sum="$(bc_float_calc "$total_output_sum + $amount")"
             fi
             if [ "${output_addresses[$i]}" != "null" ]; then
-                echo -n "${output_addresses[$i]}"
+                output_address="${output_addresses[$i]}"
+            else
+                output_address="${output_addresses2[$i]}"
+            fi
+            if [ "$output_address" != "null" ]; then
+                echo -n "$output_address"
                 if [ "$is_likely_cj" ] && [ "$amount" != "0.00000000" ]; then
                     if [[ " ${equal_output_values[@]} " =~ " ${output_values[$i]} " ]]; then
                         echo -n " [cjout?]"
                     fi
                 fi
-                if [ "${output_addresses[$i]}" != "null" ]; then
-                    outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "${output_addresses[$i]}" | jq -r ".labels[]")" | tr '\n' ',')"
-                    if [ "$outputlabels" != "" ]; then
-                        echo -n " [$outputlabels]"
-                    fi
+                outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$output_address" | \
+                    jq -r ".labels[]")" | tr '\n' ',')"
+                if [ "$outputlabels" != "" ]; then
+                    echo -n " [$outputlabels]"
                 fi
             else
                 echo -n "${output_asms[$i]}"
