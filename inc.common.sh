@@ -320,7 +320,11 @@ function show_decoded_tx_for_human()
     if [ "$wallettxdata" != "" ]; then
         confirmations="$(echo "$wallettxdata" | jq ".confirmations")"
         if [ "$confirmations" == "null" ] || [ "$confirmations" == "0" ]; then
-            echo "Unconfirmed"
+            echo -n "Unconfirmed"
+            if [ "$(echo "$wallettxdata" | jq -r ".[\"bip125-replaceable\"]")" == "yes" ]; then
+                echo " (RBF)"
+            fi
+            echo ""
         else
             blockhash="$(echo "$wallettxdata" | jq -r ".blockhash")"
             blockheight="$(echo "$wallettxdata" | jq -r ".blockheight")"
