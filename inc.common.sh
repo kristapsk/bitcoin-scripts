@@ -322,7 +322,7 @@ function show_decoded_tx_for_human()
         if [ "$confirmations" == "null" ] || [ "$confirmations" == "0" ]; then
             echo -n "Unconfirmed"
             if [ "$(echo "$wallettxdata" | jq -r ".[\"bip125-replaceable\"]")" == "yes" ]; then
-                echo " (RBF)"
+                echo -n " (RBF)"
             fi
             echo ""
         else
