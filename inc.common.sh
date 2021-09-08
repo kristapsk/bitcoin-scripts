@@ -174,6 +174,15 @@ function is_btc_lt()
         $(echo "$2" | btc_amount_format | tr -d '.' | sed 's/^0*//' | sed 's/^$/0/') \
     ))
 }
+# is "$1" less than or equal to "$2"
+function is_btc_lte()
+{
+    (( \
+        $(echo "$1" | btc_amount_format | tr -d '.' | sed 's/^0*//' | sed 's/^$/0/') \
+            <= \
+        $(echo "$2" | btc_amount_format | tr -d '.' | sed 's/^0*//' | sed 's/^$/0/') \
+    ))
+}
 
 function is_valid_bitcoin_address()
 {
@@ -517,4 +526,12 @@ function bip21_get_param()
             echo "$1" | sed "s/.*${key}=//" | sed "s/&.*//" | urldecode
         fi
     fi
+}
+
+function randamount()
+{
+    minamount="$1"
+    maxamount="$2"
+    diff="$(bc_float_calc "$maxamount - $minamount")"
+    bc_float_calc "$minamount + $RANDOM * $diff * 0.00003055581"
 }

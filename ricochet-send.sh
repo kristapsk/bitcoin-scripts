@@ -3,15 +3,16 @@
 . $(dirname $0)/inc.common.sh
 
 if [ "$2" == "" ]; then
-    echo "Usage: $(basename $0) [options] amount destination_address [hops [fee [sleeptime_min [sleeptime_max [hop_confirmations]]]]"
+    echo "Usage: $(basename $0) [options] amount destination_address [hops [txfee [sleeptime_min [sleeptime_max [hop_confirmations [txfee_factor]]]]]]"
     echo "Where:"
     echo "  amount              - amount to send in BTC"
     echo "  destination_address - destination address"
     echo "  hops                - number of hops (default: 5)"
-    echo "  fee                 - transaction fee per kW (default: \"estimatesmartfee 2\", currently $($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options 2) BTC)"
+    echo "  txfee               - average transaction fee per kvB (default: \"estimatesmartfee 2\", currently $($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options 2) BTC)"
     echo "  sleeptime_min       - minimum sleep time between hops in seconds (default: 10)"
     echo "  sleeptime_max       - maximum sleep time between hops in seconds (default: 15)"
     echo "  hop_confirmations   - minimum number of confirmations between hops (default: 0)"
+    echo "  txfee_factor        - variance around average transaction fee, e.g. 0.00002000 fee, 0.2 var = fee is between 0.00001600 and 0.00002400 (default: 0.3)"
     exit
 fi
 
@@ -32,9 +33,9 @@ if [ "$3" != "" ]; then
     hops=$3
 fi
 if [ "$4" != "" ]; then
-    fee=$4
+    txfee="$4"
 else
-    fee=$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options 2)
+    txfee="$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options 2)"
 fi
 if [ "$6" != "" ]; then
     sleeptime_min=$5
@@ -48,16 +49,23 @@ if [ "$7" != "" ]; then
 else
     hop_confirmations=0
 fi
-
-# Force minimum required fee
-fee="$(echo "$fee" | btc_amount_format)"
-mempoolminfee="$(call_bitcoin_cli getmempoolinfo | jq_btc_float ".mempoolminfee")"
-if is_btc_lt "$fee" "$mempoolminfee"; then
-    echo "Fee $fee is below minimum mempool fee, raising to $mempoolminfee"
-    fee="$mempoolminfee"
+if [ "$8" != "" ]; then
+    txfee_factor="$8"
+else
+    txfee_factor="0.3"
 fi
 
-echo "Ricocheting $amount BTC to $address via $hops hops using $fee fee per KB"
+# Force minimum required fee
+txfee_min="$(bc_float_calc "$txfee * (1 - $txfee_factor)")"
+txfee_max="$(bc_float_calc "$txfee * (1 + $txfee_factor)")"
+mempoolminfee="$(call_bitcoin_cli getmempoolinfo | jq_btc_float ".mempoolminfee")"
+if is_btc_lt "$txfee_min" "$mempoolminfee"; then
+    echo "Feerate $txfee_min is below minimum mempool fee, raising minimum to $mempoolminfee"
+    txfee_min="$mempoolminfee"
+fi
+txfee_average="$(bc_float_calc "($txfee_min + $txfee_max) * 0.5")"
+
+echo "Ricocheting $amount BTC to $address via $hops hops using average $txfee_average fee per kvB"
 read -p "Is this ok? " -n 1 -r
 echo
 
@@ -77,18 +85,27 @@ ricochet_addresses+=("$address")
 
 # FixMe: TX size may vary depending on input and output address types
 ricochet_tx_size=192
-single_ricochet_tx_fee=$(bc_float_calc "$ricochet_tx_size * $fee * 0.001")
-ricochet_fees=$(bc_float_calc "($hops - 1) * $single_ricochet_tx_fee")
-send_amount=$(bc_float_calc "$amount + $ricochet_fees")
+ricochet_fees=(
+    "$(randamount "$txfee_min" "$txfee_max")"
+)
+ricochet_fee_sum="0"
+for i in $(seq 1 $(( $hops - 1 ))); do
+    fee="$(randamount "$txfee_min" "$txfee_max")"
+    ricochet_fees+=("$fee")
+    ricochet_fee_sum="$(bc_float_calc "$ricochet_fee_sum + $fee")"
+done
+ricochet_fees+=("0")
+send_amount=$(bc_float_calc "$amount + $ricochet_fee_sum")
 
 #echo "Richochet addresses: ${ricochet_addresses[@]}"
+#echo "Ricochet fees: ${ricochet_fees[@]}"
 
 # Send out first transaction
 echo -n "0: (wallet) -> ${ricochet_addresses[0]} ($send_amount) - "
-call_bitcoin_cli settxfee $fee > /dev/null
-txid=$(call_bitcoin_cli sendtoaddress ${ricochet_addresses[0]} $send_amount)
+call_bitcoin_cli settxfee "${ricochet_fees[0]}" > /dev/null
+txid="$(call_bitcoin_cli sendtoaddress ${ricochet_addresses[0]} $send_amount)"
 echo "$txid"
-rawtx=$(show_tx_by_id $txid)
+rawtx="$(show_tx_by_id $txid)"
 #echo "$rawtx"
 vout_idx=""
 idx=0
@@ -116,10 +133,10 @@ use_txid="$txid"
 echo "Preparing rest of transactions..."
 signedtxes=()
 for i in $(seq 1 $(( $hops - 1 ))); do
-    send_amount=$(bc_float_calc "$send_amount - $single_ricochet_tx_fee")
+    send_amount="$(bc_float_calc "$send_amount - ${ricochet_fees[$i]}")"
     echo -n "$i: ${ricochet_addresses[$(( $i - 1 ))]} -> ${ricochet_addresses[$i]} ($send_amount) - "
-    rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$use_txid\",\"vout\":$vout_idx}]" "{\"${ricochet_addresses[$i]}\":$send_amount}")
-    privkey=$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$(( $i - 1 ))]}")
+    rawtx="$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$use_txid\",\"vout\":$vout_idx}]" "{\"${ricochet_addresses[$i]}\":$send_amount}")"
+    privkey="$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$(( $i - 1 ))]}")"
     signedtx="$(signrawtransactionwithkey "$rawtx" "[\"$privkey\"]" "[{\"txid\":\"$use_txid\",\"vout\":$vout_idx,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$send_amount}]")"
     decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
     use_txid="$(echo "$decodedtx" | jq -r ".txid")"

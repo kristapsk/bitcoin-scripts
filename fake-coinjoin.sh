@@ -16,6 +16,8 @@ fi
 # Values below 1000 are treated as estimated blocks to confirm,
 # 1000 and above as sat/kB.
 tx_fees=3
+# [fraction, 0-1] / variance around the average fee. Ex: 1000 fee, 0.2 var = fee is btw 800-1200
+txfee_factor=0.3
 # Abort if TX fee per KB is above this number (satoshis)
 absurd_fee_per_kb=150000
 # Coin selection ("merge") algorithm.
@@ -43,9 +45,12 @@ else
         exit 1
     fi
 fi
+fee="$(randamount \
+    "$(bc_float_calc "$fee * (1 - $txfee_factor)")" \
+    "$(bc_float_calc "$fee * (1 + $txfee_factor)")")"
 mempoolminfee="$(call_bitcoin_cli getmempoolinfo | jq_btc_float ".mempoolminfee")"
 if is_btc_lt "$fee" "$mempoolminfee"; then
-    echo "Fee $fee is below minimum mempool fee, raising to $mempoolminfee"
+    echo "Feerate $fee is below minimum mempool fee, raising to $mempoolminfee"
     fee="$mempoolminfee"
 fi
 if is_btc_gte "$fee" "$(bc_float_calc "$absurd_fee_per_kb * 0.00000001")"; then
