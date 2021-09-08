@@ -308,6 +308,19 @@ function hr()
     printf "%0*d\n" $COLS | tr 0 ${1:--}
 }
 
+# For compatibility between different Core versions (pre and 22.0+)
+function get_decoded_tx_addresses()
+{
+    decodedtx="$1"
+    addr0="$(echo "$decodedtx" | \
+        jq -r ".vout[].scriptPubKey.addresses[0]" | head -n 1)"
+    if [ "$addr0" == "null" ]; then
+        echo "$decodedtx" | jq -r ".vout[].scriptPubKey.address"
+    else
+        echo "$decodedtx" | jq -r ".vout[].scriptPubKey.addresses[0]"
+    fi
+}
+
 function show_decoded_tx_for_human()
 {
     decodedtx="$1"
@@ -383,8 +396,7 @@ function show_decoded_tx_for_human()
 
     echo "Output(s):"
     total_output_sum="0.00000000"
-    readarray -t output_addresses < <( echo "$1" | jq -r ".vout[].scriptPubKey.addresses[0]" )
-    readarray -t output_addresses2 < <( echo "$1" | jq -r ".vout[].scriptPubKey.address" )
+    readarray -t output_addresses <<< "$(get_decoded_tx_addresses "$1")"
     readarray -t output_asms < <( echo "$1" | jq -r ".vout[].scriptPubKey.asm" )
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" )
     if [ "$is_likely_cj" ]; then
@@ -400,11 +412,7 @@ function show_decoded_tx_for_human()
                 echo -n "$amount BTC -> "
                 total_output_sum="$(bc_float_calc "$total_output_sum + $amount")"
             fi
-            if [ "${output_addresses[$i]}" != "null" ]; then
-                output_address="${output_addresses[$i]}"
-            else
-                output_address="${output_addresses2[$i]}"
-            fi
+            output_address="${output_addresses[$i]}"
             if [ "$output_address" != "null" ]; then
                 echo -n "$output_address"
                 if [ "$is_likely_cj" ] && [ "$amount" != "0.00000000" ]; then

@@ -102,11 +102,11 @@ while read vout_address; do
         fi
     fi
     ((idx++))
-done < <(echo "$rawtx" | jq -r ".vout[].scriptPubKey.addresses[0]")
-#done < <(echo "$rawtx" | jq_btc_float ".vout[].value")
+done <<< "$(get_decoded_tx_addresses "$rawtx")"
 if [ "$prev_pubkey" == "" ]; then
     echoerr "$rawtx"
     echoerr "FATAL: Can't find the right vout in the first transaction, please fill a bug report!"
+    echoerr "Expecting $send_amount -> ${ricochet_addresses[0]}"
     exit 1
 fi
 
