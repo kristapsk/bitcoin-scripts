@@ -7,5 +7,9 @@ if [ "$1" == "" ]; then
     exit 0
 fi
 
-call_bitcoin_cli estimatesmartfee $1 | jq_btc_float ".feerate"
+feerate="$(call_bitcoin_cli estimatesmartfee $1 | jq_btc_float ".feerate")"
+if [ "$feerate" == "0.00000000" ]; then
+    feerate="$(call_bitcoin_cli getmempoolinfo | jq_btc_float ".mempoolminfee")"
+fi
+echo $feerate
 
