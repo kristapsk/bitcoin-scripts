@@ -277,8 +277,7 @@ function is_likely_cj_tx()
     input_count="$(jq ".vin | length" <<< "$decodedtx")"
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" | \
         grep -v "^0$" )
-    readarray -t output_addresses < <( echo "$1" | \
-        jq ".vout[].scriptPubKey.addresses[0]")
+    readarray -t output_addresses <<< "$(get_decoded_tx_addresses "$1")"
     readarray -t equal_output_values < <( echo "${output_values[@]}" | \
         tr ' ' '\n' | sort | uniq -D | uniq )
     equal_output_count=0
