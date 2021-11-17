@@ -337,7 +337,8 @@ function show_decoded_tx_for_human()
     is_likely_cj="$(is_likely_cj_tx "$decodedtx")"
     echo "TxID: $txid"
     hr
-    echo "Size: $(echo "$1" | jq -r ".vsize") vB"
+    tx_vsize="$(echo "$1" | jq -r ".vsize")"
+    echo "Size: $tx_vsize vB"
     if [ "$wallettxdata" != "" ]; then
         confirmations="$(echo "$wallettxdata" | jq ".confirmations")"
         if [ "$confirmations" == "null" ] || [ "$confirmations" == "0" ]; then
@@ -359,9 +360,12 @@ function show_decoded_tx_for_human()
     echo "Input(s):"
     readarray -t input_txids < <( echo "$1" | jq -r ".vin[].txid" )
     readarray -t input_vouts < <( echo "$1" | jq ".vin[].vout" )
+    total_input_sum="0.00000000"
     if (( ${#input_txids[@]} == 0 )); then
         echo "(none)"
+        has_total_input_sum="0"
     else
+        has_total_input_sum="1"
         for i in $(seq 0 $(( ${#input_txids[@]} - 1 )) ); do
             echo -n "* "
             if   [ "${input_txids[$i]}" == "null" ] && \
@@ -396,7 +400,10 @@ function show_decoded_tx_for_human()
                         fi
                     fi
                     echo -n ")"
+                    total_input_sum="$(bc_float_calc "$total_input_sum + $inputvalue")"
                 fi
+            else
+                has_total_input_sum="0"
             fi
             echo
         done
@@ -447,8 +454,16 @@ function show_decoded_tx_for_human()
             fi
             echo
         done
+        if [ "$has_total_input_sum" == "1" ]; then
+            echo -en "\nTotal input sum: $total_input_sum BTC"
+        fi
         if [ "$total_output_sum" != "0.00000000" ]; then
             echo -e "\nTotal output sum: $total_output_sum BTC"
+            if [ "$has_total_input_sum" == "1" ]; then
+                fee="$(bc_float_calc "$total_input_sum - $total_output_sum")"
+                feerate="$(echo "$fee * 100000000 / $tx_vsize" | bc)"
+                echo "Fee: $(bc_float_calc "$total_input_sum - $total_output_sum") BTC ($feerate sat/vB)"
+            fi
         fi
     fi
     hr
