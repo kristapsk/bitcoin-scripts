@@ -338,7 +338,9 @@ function show_decoded_tx_for_human()
     echo "TxID: $txid"
     hr
     tx_vsize="$(echo "$1" | jq -r ".vsize")"
-    echo "Size: $tx_vsize vB"
+    tx_size="$(echo "$1" | jq -r ".size")"
+    tx_weight="$(echo "$1" | jq -r ".weight")"
+    echo "Size: $tx_vsize vB ($tx_size bytes, $tx_weight wu)"
     if [ "$wallettxdata" != "" ]; then
         confirmations="$(echo "$wallettxdata" | jq ".confirmations")"
         if [ "$confirmations" == "null" ] || [ "$confirmations" == "0" ]; then
