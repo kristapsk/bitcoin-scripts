@@ -25,17 +25,19 @@ None of scripts do wallet unlocking by itself, so you must call `bitcoin-cli wal
 
 ## Examples
 
-Send random amount between 0.001 and 0.002 BTC [donations](https://github.com/kristapsk/bitcoin-donation-addresses) using fake coinjoin. Will require enough P2PKH inputs with 5 or more confirmations in a wallet. Transaction will have two or more inputs from your wallet and two additional change outputs going back to your wallet (in addition to recipients).
+Send random amount between 0.001 and 0.002 BTC donation to me and [Sci-Hub](https://en.wikipedia.org/wiki/Sci-Hub) (here's [some list of Bitcoin donation addresses](https://github.com/kristapsk/bitcoin-donation-addresses)) using fake coinjoin. Will require enough confirmed inputs previously sent to native segwit p2wpkh bech32 addresses in a wallet. Transaction will have two or more inputs from your wallet and two additional change outputs going back to your wallet (in addition to recipients).
 ```
-$ ./fake-coinjoin.sh $(./randbtc.sh 0.001 0.002) 1andreas3batLhQa2FawWjeyjCqyBzypd 3N6qaU3bnF43u4YTFKQf8usd3UqvyShovS
+$ ./fake-coinjoin.sh $(./randbtc.sh 0.001 0.002) bc1q7eqheemcu6xpgr42vl0ayel6wj087nxdfjfndf bc1qwfafhs3ztp5d78n3jwwvlel0m7g0njj949zdya
 ```
 
 Send 0.001 BTC donation using ricochet send with 5 hops and 24 hour confirmation target.
 ```
-$ ./ricochet-send.sh 0.001 1andreas3batLhQa2FawWjeyjCqyBzypd 5 $(./estimatesmartfee.sh $(./timetoblocks.sh "24 hours"))
+$ ./ricochet-send.sh 0.001 bc1qwfafhs3ztp5d78n3jwwvlel0m7g0njj949zdya 5 $(./estimatesmartfee.sh $(./timetoblocks.sh "24 hours"))
 ```
 ## Support
 
 [![tippin.me](https://badgen.net/badge/%E2%9A%A1%EF%B8%8Ftippin.me/@kristapsk/F0918E)](https://tippin.me/@kristapsk)
 
-If you find these scripts useful, you can support development by sending some Bitcoin to 3BGEw1eLeu1xrcRVogvHbqNqWWLtmB2BTM. Or use tippin.me link above for tips via Lightning Network.
+If you want to support my work on this project and other free software (I am also maintainer of [JoinMarket](https://github.com/JoinMarket-Org/joinmarket-clientserver) and do other Bitcoin stuff), you can send some sats (Bitcoin) either [here](https://donate.kristapsk.lv/) (that's my self-hosted [SatSale](https://github.com/nickfarrow/SatSale) instance) or by using [tippin.me](https://tippin.me/@kristapsk).
+
+There is also static donation address used in examples above - `bc1qwfafhs3ztp5d78n3jwwvlel0m7g0njj949zdya` ([signed](donation-address.txt.asc) with [my signature](https://github.com/JoinMarket-Org/joinmarket-clientserver/blob/709db9ea3b7a18a070e8b76943d57bdfad46df60/pubkeys/KristapsKaupe.asc)).
