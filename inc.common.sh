@@ -30,6 +30,11 @@ TESTNET_ADDRESS_REGEX="\([mn2][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|\(bcrt1\|tb1\)[a-z0
 
 # Common useful functions
 
+function command_exists()
+{
+    command -v "$1" > /dev/null
+}
+
 function echoerr()
 {
     (>&2 echo "$@")
@@ -308,7 +313,7 @@ function is_likely_cj_tx()
 
 function hr()
 {
-    if which tput > /dev/null 2>&1; then
+    if command_exists tput; then
         COLS=$(tput cols)
     else
         COLS=78
