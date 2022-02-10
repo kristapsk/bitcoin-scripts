@@ -427,40 +427,49 @@ function show_decoded_tx_for_human()
     if (( ${#input_txids[@]} == 0 )); then
         echo "(none)"
     else
+        num_empty_outputs="0"
         for i in $(seq 0 $(( ${#output_addresses[@]} - 1 )) ); do
-            echo -n "* "
-            amount="$(echo ${output_values[$i]} | btc_amount_format)"
-            if [ "$amount" != "0.00000000" ]; then
-                echo -n "$amount BTC -> "
-                total_output_sum="$(bc_float_calc "$total_output_sum + $amount")"
-            fi
-            output_address="${output_addresses[$i]}"
-            if [ "$output_address" != "null" ]; then
-                echo -n "$output_address"
-                if [ "$is_likely_cj" ] && [ "$amount" != "0.00000000" ]; then
-                    if [[ " ${equal_output_values[@]} " =~ " ${output_values[$i]} " ]]; then
-                        echo -n " [cjout?]"
+            # Don't output individual empty outputs, see https://mempool.emzy.de/testnet/tx/2d0a64a14faa9dc707dc84647a4e0dd1d4f31753e8a85574128bc8110e312e10
+            if [ "${output_asms[$i]}" != "" ]; then
+                echo -n "* "
+                amount="$(echo ${output_values[$i]} | btc_amount_format)"
+                if [ "$amount" != "0.00000000" ]; then
+                    echo -n "$amount BTC -> "
+                    total_output_sum="$(bc_float_calc "$total_output_sum + $amount")"
+                fi
+                output_address="${output_addresses[$i]}"
+                if [ "$output_address" != "null" ]; then
+                    echo -n "$output_address"
+                    if [ "$is_likely_cj" ] && [ "$amount" != "0.00000000" ]; then
+                        if [[ " ${equal_output_values[@]} " =~ " ${output_values[$i]} " ]]; then
+                            echo -n " [cjout?]"
+                        fi
+                    fi
+                    outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$output_address" | \
+                        jq -r ".labels[]")" | tr '\n' ',')"
+                    if [ "$outputlabels" != "" ]; then
+                        echo -n " [$outputlabels]"
+                    fi
+                else
+                    echo -n "${output_asms[$i]}"
+                    # Try decode human readable OP_RETURN's
+                    if [[ ${output_asms[$i]} == OP_RETURN* ]]; then
+                        output_asm="${output_asms[$i]}"
+                        data="$(xxd -r -p  <<< "${output_asm:10}" | tr -d '\0')"
+                        data_human="$(tr -cd "[:print:]\n" <<< "$data")"
+                        if [ "$data" == "$data_human" ]; then
+                            echo -en "\n  ($data)"
+                        fi
                     fi
                 fi
-                outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$output_address" | \
-                    jq -r ".labels[]")" | tr '\n' ',')"
-                if [ "$outputlabels" != "" ]; then
-                    echo -n " [$outputlabels]"
-                fi
+                echo
             else
-                echo -n "${output_asms[$i]}"
-                # Try decode human readable OP_RETURN's
-                if [[ ${output_asms[$i]} == OP_RETURN* ]]; then
-                    output_asm="${output_asms[$i]}"
-                    data="$(xxd -r -p  <<< "${output_asm:10}" | tr -d '\0')"
-                    data_human="$(tr -cd "[:print:]\n" <<< "$data")"
-                    if [ "$data" == "$data_human" ]; then
-                        echo -en "\n  ($data)"
-                    fi
-                fi
+                ((num_empty_outputs++))
             fi
-            echo
         done
+        if [ "$num_empty_outputs" != "0" ]; then
+            echo "* $num_empty_outputs empty outputs"
+        fi
         if [ "$has_total_input_sum" == "1" ]; then
             echo -en "\nTotal input sum: $total_input_sum BTC"
         fi
