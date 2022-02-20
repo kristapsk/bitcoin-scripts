@@ -55,9 +55,6 @@
     testnet=0
     addresses=()
     addresses+=("BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4")
-    addresses+=("bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7k7grplx")
-    addresses+=("BC1SW50QA3JX3S")
-    addresses+=("bc1zw508d6qejxtdg4y5r3zarvaryvg6kdaj")
 
     for i in $(seq 0 $(( ${#addresses[@]} - 1 )) ); do
         is_valid_bitcoin_address ${addresses[$i]}
@@ -69,6 +66,8 @@
     addresses=()
     # Empty data section (too short)
     addresses+=("bc1gmk9yu")
+    # Invalid witness version
+    addresses+=("BC130XLXVLHEMJA6C4DQV22UAPCTQUPFHLXM9H8Z3K2E72Q4K9HCZ7VQ7ZWS8R")
 
     for i in $(seq 0 $(( ${#addresses[@]} - 1 )) ); do
         ! is_valid_bitcoin_address ${addresses[$i]}
@@ -98,3 +97,31 @@
     done
 }
 
+@test "Bech32m mainnet address validation" {
+    testnet=0
+    addresses=()
+    addresses+=("bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kt5nd6y")
+    addresses+=("BC1SW50QGDZ25J")
+    addresses+=("bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs")
+    addresses+=("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0")
+
+    for i in $(seq 0 $(( ${#addresses[@]} - 1 )) ); do
+        is_valid_bitcoin_address ${addresses[$i]}
+        is_bech32_bitcoin_address ${addresses[$i]}
+        is_bech32m_bitcoin_address ${addresses[$i]}
+        [[ "$(get_bitcoin_address_type ${addresses[$i]})" == "bech32m" ]]
+    done
+}
+
+@test "Bech32m testnet address validation" {
+    testnet=1
+    addresses=()
+    addresses+=("tb1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesf3hn0c")
+
+    for i in $(seq 0 $(( ${#addresses[@]} - 1 )) ); do
+        is_valid_bitcoin_address ${addresses[$i]}
+        is_bech32_bitcoin_address ${addresses[$i]}
+        is_bech32m_bitcoin_address ${addresses[$i]}
+        [[ "$(get_bitcoin_address_type ${addresses[$i]})" == "bech32m" ]]
+    done
+}
