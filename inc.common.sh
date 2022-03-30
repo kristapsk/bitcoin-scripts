@@ -107,12 +107,12 @@ function is_p2sh_segwit_bitcoin_address()
 
 function is_bech32_bitcoin_address()
 {
-    [[ ${1:0:4} =~ ^(bc|BC|tb|TB)1[qpzry9x8gf2tvdw0sQPZRY9X8GF2TVDW0S] ]] || [[ ${1:0:6} =~ ^(bcrt|BCRT)1[qpzry9x8gf2tvdw0sQPZRY9X8GF2TVDW0S] ]]
+    [[ ${1:0:4} =~ ^(bc|BC|tb|TB)1[qpzry9x8gf2tvdw0sQPZRYXGFTVDWS] ]] || [[ ${1:0:6} =~ ^(bcrt|BCRT)1[qpzry9x8gf2tvdw0sQPZRYXGFTVDWS] ]]
 }
 
 function is_bech32m_bitcoin_address()
 {
-    [[ ${1:0:4} =~ ^(bc|BC|tb|TB)1[pzry9x8gf2tvdw0sPZRY9X8GF2TVDW0S] ]] || [[ ${1:0:6} =~ ^(bcrt|BCRT)1[pzry9x8gf2tvdw0sPZRY9X8GF2TVDW0S] ]]
+    [[ ${1:0:4} =~ ^(bc|BC|tb|TB)1[pzry9x8gf2tvdw0sPZRYXGFTVDWS] ]] || [[ ${1:0:6} =~ ^(bcrt|BCRT)1[pzry9x8gf2tvdw0sPZRYXGFTVDWS] ]]
 }
 
 function get_bitcoin_address_type()
