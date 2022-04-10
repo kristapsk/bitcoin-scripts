@@ -1,6 +1,6 @@
 # bitcoin-scripts
 
-Various shell scripts, mainly to be used together with [Bitcoin Core](https://github.com/bitcoin/bitcoin) (bitcoind or bitcoin-qt) wallet.
+Various shell scripts, mainly to be used together with [Bitcoin Core](https://github.com/bitcoin/bitcoin) (bitcoind or bitcoin-qt) wallet. I also have [some scripts for CLN (Core Lightning / c-lightning)](https://github.com/kristapsk/cln-scripts).
 
 Dependencies: `bash`, `bitcoin-cli` (v0.15 or newer), `awk`, `bc`, [`jq`](https://github.com/stedolan/jq), `sed`.
 
