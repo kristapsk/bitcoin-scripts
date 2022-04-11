@@ -425,6 +425,7 @@ function show_decoded_tx_for_human()
 
     echo "Output(s):"
     total_output_sum="0.00000000"
+    current_outnum="0"
     readarray -t output_addresses <<< "$(get_decoded_tx_addresses "$1")"
     readarray -t output_asms < <( echo "$1" | jq -r ".vout[].scriptPubKey.asm" )
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" )
@@ -438,7 +439,7 @@ function show_decoded_tx_for_human()
         for i in $(seq 0 $(( ${#output_addresses[@]} - 1 )) ); do
             # Don't output individual empty outputs, see https://mempool.emzy.de/testnet/tx/2d0a64a14faa9dc707dc84647a4e0dd1d4f31753e8a85574128bc8110e312e10
             if [ "${output_asms[$i]}" != "" ]; then
-                echo -n "* "
+                echo -n "* $current_outnum: "
                 amount="$(echo ${output_values[$i]} | btc_amount_format)"
                 if [ "$amount" != "0.00000000" ]; then
                     echo -n "$amount BTC -> "
@@ -473,6 +474,7 @@ function show_decoded_tx_for_human()
             else
                 ((num_empty_outputs++))
             fi
+            ((current_outnum++))
         done
         if [ "$num_empty_outputs" != "0" ]; then
             echo "* $num_empty_outputs empty outputs"
