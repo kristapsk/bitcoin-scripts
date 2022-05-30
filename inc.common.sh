@@ -574,3 +574,23 @@ function randamount()
     diff="$(bc_float_calc "$maxamount - $minamount")"
     bc_float_calc "$minamount + $RANDOM * $diff * 0.00003055581"
 }
+
+function is_http_url()
+{
+    input="$1"
+    grep -qsE "^https?://" <<< "$input"
+}
+
+function is_hex_id()
+{
+    input="$1"
+    hexlen="$2"
+    grep -qsE "[A-Za-z0-9]{$hexlen}" <<< "$input"
+}
+
+function get_hex_id_from_string()
+{
+    input="$1"
+    hexlen="$2"
+    grep -Eo "[A-Za-z0-9]{$hexlen}" <<< "$input"
+}
