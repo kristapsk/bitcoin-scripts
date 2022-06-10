@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 
-. $(dirname $0)/inc.common.sh
+# shellcheck disable=SC1091
+# shellcheck source=./inc.common.sh
+. "$(dirname "$0")/inc.common.sh"
 
 if [ "$2" == "" ]; then
-    echo "Usage: $(basename $0) [options] source_address destination_address [hops [txfee [sleeptime_min [sleeptime_max [hop_confirmations [txfee_factor]]]]]]"
+    echo "Usage: $(basename "$0") [options] source_address destination_address [hops [txfee [sleeptime_min [sleeptime_max [hop_confirmations [txfee_factor]]]]]]"
     echo "Where:"
     echo "  source_address      - source address (all funds from that address will be send)"
     echo "  destination_address - destination address"
     echo "  hops                - number of hops (default: 5)"
-    echo "  txfee               - average transaction fee per kvB (default: \"estimatesmartfee 2\", currently $($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options 2) BTC)"
+    echo "  txfee               - average transaction fee per kvB (default: \"estimatesmartfee 2\", currently $($(dirname "$0")/estimatesmartfee.sh $bitcoin_cli_options 2) BTC)"
     echo "  sleeptime_min       - minimum sleep time between hops in seconds (default: 10)"
     echo "  sleeptime_max       - maximum sleep time between hops in seconds (default: 15)"
     echo "  hop_confirmations   - minimum number of confirmations between hops (default: 0)"
@@ -20,11 +22,11 @@ check_multiwallet
 
 source_address=$1
 destination_address=$2
-if ! is_valid_bitcoin_address $source_address; then
+if ! is_valid_bitcoin_address "$source_address"; then
     echo "Invalid Bitcoin address $source_address"
     exit 1
 fi
-if ! is_valid_bitcoin_address $destination_address; then
+if ! is_valid_bitcoin_address "$destination_address"; then
     echo "Invalid Bitcoin address $destination_address"
     exit 1
 fi
@@ -39,7 +41,7 @@ fi
 if [ "$4" != "" ]; then
     txfee="$4"
 else
-    txfee="$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options 2)"
+    txfee="$($(dirname "$0")/estimatesmartfee.sh $bitcoin_cli_options 2)"
 fi
 if [ "$6" != "" ]; then
     sleeptime_min=$5
@@ -97,7 +99,7 @@ ricochet_addresses=()
 # add destination first, we will iterate in reverse order (see tac in for below)
 ricochet_addresses+=("$destination_address")
 # We use P2PKH addresses for ricochet hops for now, that's easer.
-for i in $(seq 1 $(( $hops - 1 ))); do
+for i in $(seq 1 $(( hops - 1 ))); do
 #    ricochet_addresses+=("$(call_bitcoin_cli getnewaddress)")
     ricochet_addresses+=("$(getnewaddress_p2pkh)")
 done
@@ -108,7 +110,7 @@ destination_address_type=$(get_bitcoin_address_type "$destination_address")
 
 #echo "Richochet addresses: ${ricochet_addresses[@]}"
 
-echo -n "0: $source_address -> ${ricochet_addresses[$(( $hops - 1 ))]} ($send_amount) - "
+echo -n "0: $source_address -> ${ricochet_addresses[$(( hops - 1 ))]} ($send_amount) - "
 
 # Calculate TX fee and build first transaction
 if [ "$source_address_type" == "p2pkh" ]; then
@@ -148,9 +150,9 @@ done
 rawtx_inputs="$rawtx_inputs]"
 fee="$(randamount "$txfee_min" "$txfee_max")"
 send_amount=$(bc_float_calc "$send_amount - $(bc_float_calc "$tx_vsize * $fee * 0.001")")
-rawtx=$(call_bitcoin_cli createrawtransaction "$rawtx_inputs" "{\"${ricochet_addresses[$(( $hops - 1 ))]}\":$send_amount}")
+rawtx=$(call_bitcoin_cli createrawtransaction "$rawtx_inputs" "{\"${ricochet_addresses[$(( hops - 1 ))]}\":$send_amount}")
 signedtx=$(signrawtransactionwithwallet "$rawtx")
-txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
+txid=$(call_bitcoin_cli sendrawtransaction "$signedtx")
 decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
 prev_pubkey="$(echo "$decodedtx" | jq -r ".vout[].scriptPubKey.hex")"
 echo "$txid"
@@ -161,7 +163,7 @@ use_txid="$txid"
 echo "Preparing rest of transactions..."
 signedtxes=()
 j=1
-for i in $(seq 1 $(( $hops - 1)) | tac); do
+for i in $(seq 1 $(( hops - 1)) | tac); do
     if [ "$i" == "1" ]; then
         output_address_type=$destination_address_type
     else
@@ -194,8 +196,8 @@ for i in $(seq 1 $(( $hops - 1)) | tac); do
     fi
     fee="$(randamount "$txfee_min" "$txfee_max")"
     send_amount=$(bc_float_calc "$send_amount - $(bc_float_calc "$tx_vsize * $fee * 0.001")")
-    echo -n "$j: ${ricochet_addresses[$i]} -> ${ricochet_addresses[$(( $i - 1 ))]} ($send_amount) - "
-    rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$use_txid\",\"vout\":0}]" "{\"${ricochet_addresses[$(( $i - 1 ))]}\":$send_amount}")
+    echo -n "$j: ${ricochet_addresses[$i]} -> ${ricochet_addresses[$(( i - 1 ))]} ($send_amount) - "
+    rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$use_txid\",\"vout\":0}]" "{\"${ricochet_addresses[$(( i - 1 ))]}\":$send_amount}")
     privkey=$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$i]}")
     signedtx=$(signrawtransactionwithkey "$rawtx" "[\"$privkey\"]" "[{\"txid\":\"$use_txid\",\"vout\":0,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$send_amount}]")
     decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
@@ -209,18 +211,20 @@ done
 #printf '%s\n' "${signedtxes[@]}"
 
 PREPARE_DURATION="$(echo "$(date +%s.%N) - $PREPARE_START" | bc)"
-LANG=POSIX printf "Initial transaction preparing took %.6f seconds (you can lock wallet now)\n" $PREPARE_DURATION
+LANG=POSIX printf \
+    "Initial transaction preparing took %.6f seconds (you can lock wallet now)\n" \
+    "$PREPARE_DURATION"
 
 # Broadcast transactions with delays
 echo "Sending transactions..."
-for i in $(seq 1 $(( $hops - 1 ))); do
+for i in $(seq 1 $(( hops - 1 ))); do
     if [ "$hop_confirmations" != "0" ]; then
         echo "Waiting for $hop_confirmations transaction confirmation(s)..."
         wait_for_tx_confirmations "$txid" "$hop_confirmations"
     fi
-    random_delay=$(( $RANDOM % ($sleeptime_max - $sleeptime_min) + $sleeptime_min ))
+    random_delay=$(( RANDOM % (sleeptime_max - sleeptime_min) + sleeptime_min ))
     echo "Sleeping for $random_delay seconds..."
     sleep $random_delay
-    echo "$i: $(call_bitcoin_cli sendrawtransaction "${signedtxes[$(( $i - 1 ))]}")"
-    txid="$(call_bitcoin_cli decoderawtransaction "${signedtxes[$(( $i - 1 ))]}" | jq -r ".txid")"
+    echo "$i: $(call_bitcoin_cli sendrawtransaction "${signedtxes[$(( i - 1 ))]}")"
+    txid="$(call_bitcoin_cli decoderawtransaction "${signedtxes[$(( i - 1 ))]}" | jq -r ".txid")"
 done

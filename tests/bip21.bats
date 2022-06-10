@@ -33,3 +33,7 @@
     [[ "$(bip21_get_param "bitcoin:175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W?somethingyoudontunderstand=50&somethingelseyoudontget=999" "somethingelseyoudontget")" == "999" ]]
 }
 
+@test "urldecode tests" {
+    [[ "$(urldecode <<< "%7Bfoo%7D")" == "{foo}" ]]
+    [[ "$(urldecode <<< "Donation%20for%20project%20xyz")" == "Donation for project xyz" ]]
+}

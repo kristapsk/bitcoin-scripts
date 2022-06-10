@@ -1,3 +1,5 @@
+# shellcheck disable=SC2148
+
 bitcoin_cli="bitcoin-cli"
 bitcoin_cli_options=""
 testnet=0
@@ -80,13 +82,13 @@ function calc_tx_vsize()
         tx_size=$TX_FIXED_SIZE
     else
         tx_size=$TX_SEGWIT_FIXED_SIZE
-        tx_size=$(( $tx_size + $p2sh_segwit_in_count * $TX_P2SH_SEGWIT_IN_SIZE ))
-        tx_size=$(( $tx_size + $p2wpkh_in_count * $TX_P2WPKH_IN_SIZE ))
+        tx_size=$(( tx_size + p2sh_segwit_in_count * TX_P2SH_SEGWIT_IN_SIZE ))
+        tx_size=$(( tx_size + p2wpkh_in_count * TX_P2WPKH_IN_SIZE ))
     fi
-    tx_size=$(( $tx_size + $p2pkh_in_count * $TX_P2PKH_IN_SIZE ))
-    tx_size=$(( $tx_size + $p2pkh_out_count * $TX_P2PKH_OUT_SIZE ))
-    tx_size=$(( $tx_size + $p2sh_out_count * $TX_P2SH_OUT_SIZE ))
-    tx_size=$(( $tx_size + $p2wpkh_out_count * $TX_P2WPKH_OUT_SIZE ))
+    tx_size=$(( tx_size + p2pkh_in_count * TX_P2PKH_IN_SIZE ))
+    tx_size=$(( tx_size + p2pkh_out_count * TX_P2PKH_OUT_SIZE ))
+    tx_size=$(( tx_size + p2sh_out_count * TX_P2SH_OUT_SIZE ))
+    tx_size=$(( tx_size + p2wpkh_out_count * TX_P2WPKH_OUT_SIZE ))
     echo $tx_size
 }
 
@@ -134,7 +136,7 @@ function getnewaddress_p2pkh()
     if [ "$address" == "" ]; then
         address=$(call_bitcoin_cli getnewaddress)
     fi
-    if ! is_p2pkh_bitcoin_address $address; then
+    if ! is_p2pkh_bitcoin_address "$address"; then
         echoerr "FATAL: don't know how to generate P2PKH address!"
         kill $$
     fi
@@ -146,11 +148,11 @@ function getnewaddress_p2sh_segwit()
     address=$(try_bitcoin_cli getnewaddress "" "p2sh-segwit")
     if [ "$address" == "" ]; then
         address=$(call_bitcoin_cli getnewaddress)
-        if is_p2pkh_bitcoin_address $address; then
-            address=$(try_bitcoin_cli addwitnessaddress $address)
+        if is_p2pkh_bitcoin_address "$address"; then
+            address=$(try_bitcoin_cli addwitnessaddress "$address")
         fi
     fi
-    if ! is_p2sh_bitcoin_address $address; then
+    if ! is_p2sh_bitcoin_address "$address"; then
         echoerr "FATAL: don't know how to generate P2SH segwit address!"
         kill $$
     fi
@@ -160,7 +162,7 @@ function getnewaddress_p2sh_segwit()
 function getnewaddress_bech32()
 {
     address=$(try_bitcoin_cli getnewaddress "" "bech32")
-    if ! is_bech32_bitcoin_address $address; then
+    if ! is_bech32_bitcoin_address "$address"; then
         echoerr "FATAL: don't know how to generate bech32 address!"
         kill $$
     fi
@@ -199,10 +201,10 @@ function is_btc_lte()
 function is_valid_bitcoin_address()
 {
     if [ "$testnet" == "1" ]; then
-        echo $1 | LANG=POSIX grep -qse "^${TESTNET_ADDRESS_REGEX}\$"
+        LANG=POSIX grep -qse "^${TESTNET_ADDRESS_REGEX}\$" <<< "$1"
         return $?
     else
-        echo $1 | LANG=POSIX grep -qse "^${MAINNET_ADDRESS_REGEX}\$"
+        LANG=POSIX grep -qse "^${MAINNET_ADDRESS_REGEX}\$" <<< "$1"
         return $?
     fi
 }
@@ -303,12 +305,12 @@ function is_likely_cj_tx()
     unique_equal_output_addresses=($(echo "${equal_output_addresses[@]}" | \
         tr ' ' '\n' | sort -u | tr '\n' ' '))
     if \
-        (( $input_count >= 2 )) && \
+        (( input_count >= 2 )) && \
         (( ${#equal_output_values[@]} > 0 )) && \
         (( ${#unique_equal_output_addresses[@]} > 1 )) && \
-        (( $input_count >= $equal_output_count )) && \
-        (( ${#output_values[@]} >= $equal_output_count )) && \
-        (( ${#output_values[@]} <= $(( $equal_output_count * 2 )) )) && \
+        (( input_count >= equal_output_count )) && \
+        (( ${#output_values[@]} >= equal_output_count )) && \
+        (( ${#output_values[@]} <= $(( equal_output_count * 2 )) )) && \
         (( ${#unique_equal_output_addresses[@]} > 1 )) && \
         [[ ! $(is_omni_tx "$decodedtx") ]]
     then
@@ -325,7 +327,7 @@ function hr()
     else
         COLS=78
     fi
-    printf "%0*d\n" $COLS | tr 0 ${1:--}
+    printf "%0*d\n" $COLS | tr 0 "${1:--}"
 }
 
 # For compatibility between different Core versions (pre and 22.0+)
@@ -365,7 +367,7 @@ function show_decoded_tx_for_human()
             blockhash="$(echo "$wallettxdata" | jq -r ".blockhash")"
             blockheight="$(echo "$wallettxdata" | jq -r ".blockheight")"
             blocktime="$(echo "$wallettxdata" | jq -r ".blocktime")"
-            echo "Included in block $blockhash (@$blockheight, $(date --iso-8601="seconds" -d @$blocktime))"
+            echo "Included in block $blockhash (@$blockheight, $(date --iso-8601="seconds" -d @"$blocktime"))"
             echo "$confirmations confirmations"
         fi
     fi
@@ -406,7 +408,7 @@ function show_decoded_tx_for_human()
                 inputvalue="$(echo "$inputtx" | jq ".vout[${input_vouts[$i]}].value" | btc_amount_format)"
                 if [ "$inputvalue" != "0.00000000" ]; then
                     echo -n " ($inputvalue BTC"
-                    if [ "$inputaddress" != "none" ] && [ "$input_address" != "null" ]; then
+                    if [ "$inputaddress" != "none" ] && [ "$inputaddress" != "null" ]; then
                         echo -n " -> $inputaddress"
                         inputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$inputaddress" | jq -r ".labels[]")" | tr '\n' ',')"
                         if [ "$inputlabels" != "" ]; then
@@ -440,7 +442,7 @@ function show_decoded_tx_for_human()
             # Don't output individual empty outputs, see https://mempool.emzy.de/testnet/tx/2d0a64a14faa9dc707dc84647a4e0dd1d4f31753e8a85574128bc8110e312e10
             if [ "${output_asms[$i]}" != "" ]; then
                 echo -n "* $current_outnum: "
-                amount="$(echo ${output_values[$i]} | btc_amount_format)"
+                amount="$(echo "${output_values[$i]}" | btc_amount_format)"
                 if [ "$amount" != "0.00000000" ]; then
                     echo -n "$amount BTC -> "
                     total_output_sum="$(bc_float_calc "$total_output_sum + $amount")"
@@ -512,7 +514,7 @@ function wait_for_tx_confirmations()
     else
         check_frequency=5
     fi
-    while (( $(get_tx_confirmations $txid) < $want_confirmations )); do
+    while (( $(get_tx_confirmations "$txid") < want_confirmations )); do
         sleep $check_frequency
     done
 }
@@ -529,8 +531,8 @@ function legacy_tx_hexstring_to_txid()
 # https://stackoverflow.com/a/42636717
 function urldecode()
 {
-    while read; do
-        echo -e ${REPLY//%/\\x}
+    while read -r; do
+        echo -e "${REPLY//%/\\x}"
     done
 }
 
@@ -548,7 +550,7 @@ function is_bip21_uri()
 
 function bip21_get_address()
 {
-    if [ $(is_bip21_uri "$1") ]; then
+    if [ "$(is_bip21_uri "$1")" ]; then
         if [ "$testnet" == "1" ]; then
             LANG=POSIX grep -o "$TESTNET_ADDRESS_REGEX" <<< "$1"
         else
@@ -560,7 +562,7 @@ function bip21_get_address()
 function bip21_get_param()
 {
     key="$2"
-    if [ $(is_bip21_uri "$1") ]; then
+    if [ "$(is_bip21_uri "$1")" ]; then
         if grep -qs "${key}=" <<< "$1"; then
             echo "$1" | sed "s/.*${key}=//" | sed "s/&.*//" | urldecode
         fi

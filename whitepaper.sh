@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-. $(dirname $0)/inc.common.sh
+# shellcheck disable=SC1091
+# shellcheck source=./inc.common.sh
+. "$(dirname "$0")/inc.common.sh"
 
 if [ "$1" == "" ]; then
     echo "Usage: $(basename "$0") bitcoin.pdf"
@@ -18,7 +20,7 @@ wp_blockhash="00000000000000ecbbff6bafb7efa2f7df05b227d5c73dca8f2635af32a2e949"
 rawtx="$(try_bitcoin_cli getrawtransaction "$wp_txid" false "$wp_blockhash")"
 if [ "$rawtx" != "" ]; then
     delimiter="0100000000000000"
-    readarray -t outputs < <(echo "$rawtx" | sed "s/$delimiter/\\n/g")
+    readarray -t outputs < <(echo "${rawtx/$delimiter/\\n}")
     need_skip="6"
     first="1"
     last="$(( ${#outputs[@]} - 3 ))"
@@ -43,12 +45,12 @@ for i in $(seq $first $last); do
     cur="$need_skip"
     # there are 3 65-byte parts in this that we need
     pdfhex+="${output:$cur:130}"
-    cur=$(( $cur + 132 ))
+    cur=$(( cur + 132 ))
     pdfhex+="${output:$cur:130}"
-    cur=$(( $cur + 132 ))
+    cur=$(( cur + 132 ))
     pdfhex+="${output:$cur:130}"
 done
-output="${outputs[$(( $last + 1 ))]}"
+output="${outputs[$(( last + 1 ))]}"
 pdfhex+="${output:$need_skip:50}"
 
 echo -n "${pdfhex:16}" | xxd -r -p > "$outfile"

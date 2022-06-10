@@ -1,9 +1,11 @@
-#! /bin/bash
+#!/usr/bin/env bash
 
-. $(dirname $0)/inc.common.sh
+# shellcheck disable=SC1091
+# shellcheck source=./inc.common.sh
+. "$(dirname "$0")/inc.common.sh"
 
 if [ "$3" == "" ]; then
-    echo "Usage: $(basename $0) [options] amount address1 address2..."
+    echo "Usage: $(basename "$0") [options] amount address1 address2..."
     echo "Where:"
     echo "  amount              - amount to send in BTC"
     echo "  address...          - destination addresses (2 or more)"
@@ -36,10 +38,10 @@ check_multiwallet
 amount=$(echo "$1" | btc_amount_format)
 shift
 
-if (( $tx_fees >= 1000 )); then
+if (( tx_fees >= 1000 )); then
     fee="$(echo "$tx_fees * 0.00000001" | bc | btc_amount_format)"
 else
-    fee="$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)"
+    fee="$($(dirname "$0")/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)"
     if [ "$fee" == "" ]; then
         echoerr "estimatesmartfee failed"
         exit 1
@@ -67,14 +69,14 @@ bech32_recipient_count=0
 
 while (( ${#} > 0 )); do
     address=$1
-    if ! is_valid_bitcoin_address $address; then
+    if ! is_valid_bitcoin_address "$address"; then
         echoerr "Invalid address $address"
         exit 1
     fi
     recipients+=("$address")
-    if is_p2pkh_bitcoin_address $address; then
+    if is_p2pkh_bitcoin_address "$address"; then
         ((p2pkh_recipient_count++))
-    elif is_p2sh_bitcoin_address $address; then
+    elif is_p2sh_bitcoin_address "$address"; then
         ((p2sh_recipient_count++))
     else
         ((bech32_recipient_count++))
@@ -82,34 +84,34 @@ while (( ${#} > 0 )); do
     shift
 done
 
-if (( $p2pkh_recipient_count > 1 )); then
-    if (( $p2sh_recipient_count > 1 )) || (( $bech32_recipient_count > 1 )); then
+if (( p2pkh_recipient_count > 1 )); then
+    if (( p2sh_recipient_count > 1 )) || (( bech32_recipient_count > 1 )); then
         echoerr "Only one recipient can be a different kind! (P2PKH, P2SH or bech32)"
         exit 2
     fi
-elif (( $p2sh_recipient_count > 1 )) && (( $bech32_recipient_count > 1 )); then
+elif (( p2sh_recipient_count > 1 )) && (( bech32_recipient_count > 1 )); then
     echoerr "Only one recipient can be a different kind! (P2PKH, P2SH or bech32)"
     exit 2
 fi
 
-if (( ${#recipients[@]} > $(( $TX_OUTPUTS_MAX / 2 )) )); then
-    echoerr "More than $(( $TX_OUTPUTS_MAX / 2 )) recipients aren't supported!"
+if (( ${#recipients[@]} > $(( TX_OUTPUTS_MAX / 2 )) )); then
+    echoerr "More than $(( TX_OUTPUTS_MAX / 2 )) recipients aren't supported!"
     exit 3
 fi
 
-if (( $p2pkh_recipient_count > 1 )); then
+if (( p2pkh_recipient_count > 1 )); then
     input_type="p2pkh"
-    if (( $bech32_recipient_count > 0 )); then
+    if (( bech32_recipient_count > 0 )); then
         echoerr "Bech32 recipient cannot be combined with multiple P2PKH recipients!"
         exit 2
     fi
-elif (( $p2sh_recipient_count > 1 )); then
+elif (( p2sh_recipient_count > 1 )); then
     input_type="p2sh_segwit"
 else
     input_type="bech32"
 fi
 
-echo "Recipients: ${recipients[@]}"
+echo "Recipients: ${recipients[*]}"
 echo "input_type: $input_type"
 
 function select_default()
@@ -176,7 +178,7 @@ for i in $(seq 0 $(( ${#recipients[@]} - 2 ))); do
     current_set_inputs_sum=0
     maker_used_txids=()
     while
-        (( $utxo_idx < ${#utxo_addresses_filtered[@]} )) && \
+        (( utxo_idx < ${#utxo_addresses_filtered[@]} )) && \
         is_btc_gte "$minimum_taker_amount" "$current_set_inputs_sum";
     do
         # Stonewall rule: Utxos resulting from the same transaction are never used together in a same set.
@@ -192,7 +194,7 @@ for i in $(seq 0 $(( ${#recipients[@]} - 2 ))); do
     if ! is_btc_gte "$minimum_taker_amount" "$current_set_inputs_sum"; then
         # Add some simple random "maker fee" (10 .. 1200)
         # Interval is choosen by looking at real-world JM orderbook and https://github.com/JoinMarket-Org/joinmarket-clientserver/pull/166
-        makerfee="$(bc_float_calc "$(( $RANDOM % 1190 + 10 )) * 0.00000001")"
+        makerfee="$(bc_float_calc "$(( RANDOM % 1190 + 10 )) * 0.00000001")"
         echo "Using \"maker fee\" $makerfee"
         maker_change_outputs+=("$(eval "getnewaddress_$input_type")")
         maker_change_amounts+=("$(bc_float_calc "$current_set_inputs_sum - $amount + $makerfee")")
@@ -219,26 +221,26 @@ fi
 # https://bitcoincore.org/en/segwit_wallet_dev/#transaction-fee-estimation
 
 # Recipients
-tx_vsize=$(( $p2pkh_recipient_count * $TX_P2PKH_OUT_SIZE ))
-tx_vsize=$(( $tx_vsize + $p2sh_recipient_count * $TX_P2SH_OUT_SIZE ))
-tx_vsize=$(( $tx_vsize + $bech32_recipient_count * $TX_P2WPKH_OUT_SIZE ))
+tx_vsize=$(( p2pkh_recipient_count * TX_P2PKH_OUT_SIZE ))
+tx_vsize=$(( tx_vsize + p2sh_recipient_count * TX_P2SH_OUT_SIZE ))
+tx_vsize=$(( tx_vsize + bech32_recipient_count * TX_P2WPKH_OUT_SIZE ))
 # Fixed size + "maker" inputs + "maker" change outputs
 if [ "$input_type" == "p2pkh" ]; then
-    tx_vsize=$(( $tx_vsize + $TX_FIXED_SIZE ))
-    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2PKH_IN_SIZE ))
-    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2PKH_OUT_SIZE ))
+    tx_vsize=$(( tx_vsize + TX_FIXED_SIZE ))
+    tx_vsize=$(( tx_vsize + ${#maker_utxo_idxs[@]} * TX_P2PKH_IN_SIZE ))
+    tx_vsize=$(( tx_vsize + ${#maker_change_outputs[@]} * TX_P2PKH_OUT_SIZE ))
 elif [ "$input_type" == "p2sh_segwit" ]; then
-    tx_vsize=$(( $tx_vsize + $TX_SEGWIT_FIXED_SIZE ))
+    tx_vsize=$(( tx_vsize + TX_SEGWIT_FIXED_SIZE ))
     # P2SH segwit maker inputs
-    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2SH_SEGWIT_IN_SIZE ))
+    tx_vsize=$(( tx_vsize + ${#maker_utxo_idxs[@]} * TX_P2SH_SEGWIT_IN_SIZE ))
     # P2SH maker change outputs (recipient outputs already calculated above)
-    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2SH_OUT_SIZE ))
+    tx_vsize=$(( tx_vsize + ${#maker_change_outputs[@]} * TX_P2SH_OUT_SIZE ))
 elif [ "$input_type" == "bech32" ]; then
-    tx_vsize=$(( $tx_vsize + $TX_SEGWIT_FIXED_SIZE ))
+    tx_vsize=$(( tx_vsize + TX_SEGWIT_FIXED_SIZE ))
     # Bech32 segwit maker inputs
-    tx_vsize=$(( $tx_vsize + ${#maker_utxo_idxs[@]} * $TX_P2WPKH_IN_SIZE ))
+    tx_vsize=$(( tx_vsize + ${#maker_utxo_idxs[@]} * TX_P2WPKH_IN_SIZE ))
     # Bech32 maker change outputs (recipient outputs already calculated above)
-    tx_vsize=$(( $tx_vsize + ${#maker_change_outputs[@]} * $TX_P2WPKH_OUT_SIZE ))
+    tx_vsize=$(( tx_vsize + ${#maker_change_outputs[@]} * TX_P2WPKH_OUT_SIZE ))
 else
     echoerr "DESIGN ERROR: Invalid input_type $input_type in recipient selection!"
     exit 3
@@ -254,7 +256,7 @@ taker_utxo_idxs=()
 current_set_inputs_sum=0
 taker_used_txids=()
 while
-    (( $utxo_idx < ${#utxo_addresses_filtered[@]} )) && \
+    (( utxo_idx < ${#utxo_addresses_filtered[@]} )) && \
     is_btc_gte "$taker_amount" "$current_set_inputs_sum";
 do
     # Stonewall rule: Utxos resulting from the same transaction are never used together in a same set.
@@ -267,13 +269,13 @@ do
     fi
     ((utxo_idx++))
     if [ "$input_type" == "p2pkh" ]; then
-        tx_vsize=$(( $tx_vsize + $TX_P2PKH_IN_SIZE ))
+        tx_vsize=$(( tx_vsize + TX_P2PKH_IN_SIZE ))
         taker_amount=$(bc_float_calc "$taker_amount + $TX_P2PKH_IN_SIZE * $fee * 0.001")
     elif [ "$input_type" == "p2sh_segwit" ]; then
-        tx_vsize=$(( $tx_vsize + $TX_P2SH_SEGWIT_IN_SIZE ))
+        tx_vsize=$(( tx_vsize + TX_P2SH_SEGWIT_IN_SIZE ))
         taker_amount=$(bc_float_calc "$taker_amount + $TX_P2SH_SEGWIT_IN_SIZE * $fee * 0.001")
     elif [ "$input_type" == "bech32" ]; then
-        tx_vsize=$(( $tx_vsize + $TX_P2SH_SEGWIT_IN_SIZE ))
+        tx_vsize=$(( tx_vsize + TX_P2SH_SEGWIT_IN_SIZE ))
         taker_amount=$(bc_float_calc "$taker_amount + $TX_P2WPKH_IN_SIZE * $fee * 0.001")
     else
         echoerr "DESIGN ERROR: Invalid input_type $input_type in taker input selection!"
@@ -305,11 +307,11 @@ fi
 if is_btc_gte "$taker_change_amount" "$(bc_float_calc "$DUST_THRESHOLD * 0.00000001")"; then
     taker_change_output="$(eval "getnewaddress_$input_type")"
     if [ "$input_type" == "p2pkh" ]; then
-        tx_vsize=$(( $tx_vsize + $TX_P2PKH_OUT_SIZE ))
+        tx_vsize=$(( tx_vsize + TX_P2PKH_OUT_SIZE ))
     elif [ "$input_type" == "p2sh_segwit" ]; then
-        tx_vsize=$(( $tx_vsize + $TX_P2SH_OUT_SIZE ))
+        tx_vsize=$(( tx_vsize + TX_P2SH_OUT_SIZE ))
     elif [ "$input_type" == "bech32" ]; then
-        tx_vsize=$(( $tx_vsize + $TX_P2WPKH_OUT_SIZE ))
+        tx_vsize=$(( tx_vsize + TX_P2WPKH_OUT_SIZE ))
     else
         echoerr "DESIGN ERROR: Invalid input_type $input_type in taker change output fee calculation!"
         exit 3
@@ -394,7 +396,7 @@ echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     signedtx=$(signrawtransactionwithwallet "$rawtx")
-    txid=$(call_bitcoin_cli sendrawtransaction $signedtx)
+    txid=$(call_bitcoin_cli sendrawtransaction "$signedtx")
     echo "Sent transaction $txid"
 fi
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC1091
+# shellcheck source=./inc.common.sh
 . "$(dirname "$0")/inc.common.sh"
 
 if [ "$1" == "" ]; then
@@ -18,7 +20,7 @@ txids=()
 if is_valid_bitcoin_address "$1"; then
     addr_txids=$(call_bitcoin_cli listreceivedbyaddress 0 true true "$1" | jq -r ".[].txids[]")
     if [ "$addr_txids" != "" ]; then
-        while read txid; do
+        while read -r txid; do
             txids+=("$txid")
         done <<< "$addr_txids"
     fi

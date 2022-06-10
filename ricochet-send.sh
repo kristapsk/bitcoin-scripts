@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
-. $(dirname $0)/inc.common.sh
+# shellcheck disable=SC1091
+# shellcheck source=./inc.common.sh
+. "$(dirname "$0")/inc.common.sh"
 
 if [ "$2" == "" ]; then
-    echo "Usage: $(basename $0) [options] amount destination_address [hops [txfee [sleeptime_min [sleeptime_max [hop_confirmations [txfee_factor]]]]]]"
+    echo "Usage: $(basename "$0") [options] amount destination_address [hops [txfee [sleeptime_min [sleeptime_max [hop_confirmations [txfee_factor]]]]]]"
     echo "Where:"
     echo "  amount              - amount to send in BTC"
     echo "  destination_address - destination address"
@@ -20,7 +22,7 @@ check_multiwallet
 
 amount=$1
 address=$2
-if ! is_valid_bitcoin_address $address; then
+if ! is_valid_bitcoin_address "$address"; then
     echoerr "Invalid Bitcoin address $address"
     exit 1
 fi
@@ -35,7 +37,7 @@ fi
 if [ "$4" != "" ]; then
     txfee="$4"
 else
-    txfee="$($(dirname $0)/estimatesmartfee.sh $bitcoin_cli_options 2)"
+    txfee="$($(dirname "$0")/estimatesmartfee.sh $bitcoin_cli_options 2)"
 fi
 if [ "$6" != "" ]; then
     sleeptime_min=$5
@@ -77,7 +79,7 @@ PREPARE_START="$(date +%s.%N)"
 
 # We use P2PKH addresses for ricochet hops for now, that's easer.
 ricochet_addresses=()
-for i in $(seq 1 $(( $hops - 1 ))); do
+for i in $(seq 1 $(( hops - 1 ))); do
 #    ricochet_addresses+=("$(call_bitcoin_cli getnewaddress)")
     ricochet_addresses+=("$(getnewaddress_p2pkh)")
 done
@@ -89,7 +91,7 @@ ricochet_fees=(
     "$(randamount "$txfee_min" "$txfee_max")"
 )
 ricochet_fee_sum="0"
-for i in $(seq 1 $(( $hops - 1 ))); do
+for i in $(seq 1 $(( hops - 1 ))); do
     fee="$(randamount "$txfee_min" "$txfee_max")"
     ricochet_fees+=("$fee")
     ricochet_fee_sum="$(bc_float_calc "$ricochet_fee_sum + $fee")"
@@ -103,13 +105,13 @@ send_amount=$(bc_float_calc "$amount + $ricochet_fee_sum")
 # Send out first transaction
 echo -n "0: (wallet) -> ${ricochet_addresses[0]} ($send_amount) - "
 call_bitcoin_cli settxfee "${ricochet_fees[0]}" > /dev/null
-txid="$(call_bitcoin_cli sendtoaddress ${ricochet_addresses[0]} $send_amount)"
+txid="$(call_bitcoin_cli sendtoaddress "${ricochet_addresses[0]}" "$send_amount")"
 echo "$txid"
-rawtx="$(show_tx_by_id $txid)"
+rawtx="$(show_tx_by_id "$txid")"
 #echo "$rawtx"
 vout_idx=""
 idx=0
-while read vout_address; do
+while read -r vout_address; do
     if [ "$vout_address" == "${ricochet_addresses[0]}" ]; then
         vout_idx=$idx
         value="$(echo "$rawtx" | jq -r ".vout[$vout_idx].value")"
@@ -132,11 +134,11 @@ use_txid="$txid"
 # Prepare and sign rest of transactions
 echo "Preparing rest of transactions..."
 signedtxes=()
-for i in $(seq 1 $(( $hops - 1 ))); do
+for i in $(seq 1 $(( hops - 1 ))); do
     send_amount="$(bc_float_calc "$send_amount - ${ricochet_fees[$i]}")"
-    echo -n "$i: ${ricochet_addresses[$(( $i - 1 ))]} -> ${ricochet_addresses[$i]} ($send_amount) - "
+    echo -n "$i: ${ricochet_addresses[$(( i - 1 ))]} -> ${ricochet_addresses[$i]} ($send_amount) - "
     rawtx="$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$use_txid\",\"vout\":$vout_idx}]" "{\"${ricochet_addresses[$i]}\":$send_amount}")"
-    privkey="$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$(( $i - 1 ))]}")"
+    privkey="$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$(( i - 1 ))]}")"
     signedtx="$(signrawtransactionwithkey "$rawtx" "[\"$privkey\"]" "[{\"txid\":\"$use_txid\",\"vout\":$vout_idx,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$send_amount}]")"
     decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
     use_txid="$(echo "$decodedtx" | jq -r ".txid")"
@@ -149,19 +151,20 @@ done
 #printf '%s\n' "${signedtxes[@]}"
 
 PREPARE_DURATION="$(echo "$(date +%s.%N) - $PREPARE_START" | bc)"
-LANG=POSIX printf "Initial transaction preparing took %.6f seconds (you can lock wallet now)\n" $PREPARE_DURATION
+LANG=POSIX printf \
+    "Initial transaction preparing took %.6f seconds (you can lock wallet now)\n" \
+    "$PREPARE_DURATION"
 
 # Broadcast transactions with delays
 echo "Sending transactions..."
-for i in $(seq 1 $(( $hops - 1 ))); do
+for i in $(seq 1 $(( hops - 1 ))); do
     if [ "$hop_confirmations" != "0" ]; then
         echo "Waiting for $hop_confirmations transaction confirmation(s)..."
         wait_for_tx_confirmations "$txid" "$hop_confirmations"
     fi
-    random_delay=$(( $RANDOM % ($sleeptime_max - $sleeptime_min) + $sleeptime_min ))
+    random_delay=$(( RANDOM % (sleeptime_max - sleeptime_min) + sleeptime_min ))
     echo "Sleeping for $random_delay second(s)..."
     sleep $random_delay
-    echo "$i: $(call_bitcoin_cli sendrawtransaction "${signedtxes[$(( $i - 1 ))]}")"
-    txid="$(call_bitcoin_cli decoderawtransaction "${signedtxes[$(( $i - 1 ))]}" | jq -r ".txid")"
+    echo "$i: $(call_bitcoin_cli sendrawtransaction "${signedtxes[$(( i - 1 ))]}")"
+    txid="$(call_bitcoin_cli decoderawtransaction "${signedtxes[$(( i - 1 ))]}" | jq -r ".txid")"
 done
-
