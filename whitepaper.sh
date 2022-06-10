@@ -20,7 +20,7 @@ wp_blockhash="00000000000000ecbbff6bafb7efa2f7df05b227d5c73dca8f2635af32a2e949"
 rawtx="$(try_bitcoin_cli getrawtransaction "$wp_txid" false "$wp_blockhash")"
 if [ "$rawtx" != "" ]; then
     delimiter="0100000000000000"
-    readarray -t outputs < <(echo "${rawtx/$delimiter/\\n}")
+    readarray -t outputs < <(echo "${rawtx//$delimiter/\\n}")
     need_skip="6"
     first="1"
     last="$(( ${#outputs[@]} - 3 ))"
