@@ -209,6 +209,11 @@ function is_valid_bitcoin_address()
     fi
 }
 
+function is_valid_bitcoin_outpoint()
+{
+    grep -qsE "^[a-z0-9]{64}:[0-9]+$" <<< "$1"
+}
+
 function jq_btc_float()
 {
     jq "$1" | btc_amount_format
@@ -519,6 +524,19 @@ function wait_for_tx_confirmations()
     done
 }
 
+function wait_for_block()
+{
+    want_blockheight=$1
+    if [ "$2" != "" ]; then
+        check_frequency=$2
+    else
+        check_frequency=5
+    fi
+    while (( $(call_bitcoin_cli getblockcount) < want_blockheight )); do
+        sleep $check_frequency
+    done
+}
+
 # Return txid for a signed hex-encoded transaction
 # Result should be the same as sendrawtransaction return value, but without broadcasting transaction to the network.
 # Will currently not work with SegWit transactions! (hence legacy prefix)
@@ -595,4 +613,14 @@ function get_hex_id_from_string()
     input="$1"
     hexlen="$2"
     grep -Eo "[A-Za-z0-9]{$hexlen}" <<< "$input"
+}
+
+function get_txid_from_outpoint()
+{
+    get_hex_id_from_string "$1" "64"
+}
+
+function get_vout_from_outpoint()
+{
+    grep -Eo ":[0-9]+$" <<< "$1" | tr -d ":"
 }
