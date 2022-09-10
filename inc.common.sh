@@ -3,7 +3,6 @@
 bitcoin_cli="bitcoin-cli"
 bitcoin_cli_options=""
 testnet=0
-rpcwallet=""
 has_rpcwallet=0
 
 # assume all first parameters beginning with dash are bitcoin-cli options
@@ -12,9 +11,7 @@ while (( ${#} > 0 )) && [[ ${1:0:1} == "-" ]]; do
     if [ "$1" == "-regtest" ] || [ "$1" == "-testnet" ] || [ "$1" == "-signet" ]; then
         testnet=1
     elif [ "${1:0:11}" == "-rpcwallet=" ]; then
-        # we need this, because valid value of -rpcwallet can be empty string
         has_rpcwallet=1
-        rpcwallet="${1:11}"
     fi
     shift
 done
