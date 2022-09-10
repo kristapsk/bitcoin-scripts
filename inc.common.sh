@@ -3,12 +3,18 @@
 bitcoin_cli="bitcoin-cli"
 bitcoin_cli_options=""
 testnet=0
+rpcwallet=""
+has_rpcwallet=0
 
 # assume all first parameters beginning with dash are bitcoin-cli options
 while (( ${#} > 0 )) && [[ ${1:0:1} == "-" ]]; do
     bitcoin_cli_options="$bitcoin_cli_options $1"
     if [ "$1" == "-regtest" ] || [ "$1" == "-testnet" ] || [ "$1" == "-signet" ]; then
         testnet=1
+    elif [ "${1:0:11}" == "-rpcwallet=" ]; then
+        # we need this, because valid value of -rpcwallet can be empty string
+        has_rpcwallet=1
+        rpcwallet="${1:11}"
     fi
     shift
 done
@@ -270,6 +276,12 @@ function show_tx_by_id()
     fi
 }
 
+function has_index()
+{
+    indexinfo="$(call_bitcoin_cli "getindexinfo")"
+    [[ "$indexinfo" != "null" ]]
+}
+
 # is_omni_tx decodedtx
 function is_omni_tx()
 {
@@ -415,9 +427,11 @@ function show_decoded_tx_for_human()
                     echo -n " ($inputvalue BTC"
                     if [ "$inputaddress" != "none" ] && [ "$inputaddress" != "null" ]; then
                         echo -n " -> $inputaddress"
-                        inputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$inputaddress" | jq -r ".labels[]")" | tr '\n' ',')"
-                        if [ "$inputlabels" != "" ]; then
-                            echo -n " [$inputlabels]"
+                        if  [ "$has_rpcwallet" == "1" ]; then
+                            inputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$inputaddress" | jq -r ".labels[]")" | tr '\n' ',')"
+                            if [ "$inputlabels" != "" ]; then
+                                echo -n " [$inputlabels]"
+                            fi
                         fi
                     fi
                     echo -n ")"
@@ -460,10 +474,12 @@ function show_decoded_tx_for_human()
                             echo -n " [cjout?]"
                         fi
                     fi
-                    outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$output_address" | \
-                        jq -r ".labels[]")" | tr '\n' ',')"
-                    if [ "$outputlabels" != "" ]; then
-                        echo -n " [$outputlabels]"
+                    if [ "$has_rpcwallet" == "1" ]; then
+                        outputlabels="$(printf "$(call_bitcoin_cli getaddressinfo "$output_address" | \
+                            jq -r ".labels[]")" | tr '\n' ',')"
+                        if [ "$outputlabels" != "" ]; then
+                            echo -n " [$outputlabels]"
+                        fi
                     fi
                 else
                     echo -n "${output_asms[$i]}"

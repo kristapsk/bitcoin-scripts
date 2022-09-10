@@ -13,7 +13,9 @@ if [ "$1" == "" ]; then
     exit
 fi
 
-check_multiwallet
+if ! has_index "txindex"; then
+    check_multiwallet
+fi
 
 txids=()
 
