@@ -1,0 +1,30 @@
+name: Test Bitcoin scripts
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        bitcoind-version: ["0.16.3", "22.0"]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup BATS
+        uses: mig4/setup-bats@v1
+        with:
+          bats-version: 1.8.2
+      - name: Run unit tests
+        run: ./tests/test_all.sh
+      - name: Cache bitcoind
+        uses: actions/cache@v3
+        env:
+          cache-name: bitcoind
+          BITCOIND_VERSION: ${{ matrix.bitcoind-version }}
+        with:
+          path: ~/bitcoin/*/bin/bitcoin*
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{ env.BITCOIND_VERSION }}-${{ hashFiles('tests/install_bitcoind.sh') }}
+      - name: Install bitcoind
+        env:
+          BITCOIND_VERSION: ${{ matrix.bitcoind-version }}
+        run: ./tests/install_bitcoind.sh
+      - name: Run functional tests
+        run: ./tests/functional/test_all.sh
