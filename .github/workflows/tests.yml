@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        bitcoind-version: ["0.16.3", "22.0"]
+        bitcoind-version: ["0.16.3", "23.0"]
     steps:
       - uses: actions/checkout@v2
       - name: Setup BATS
