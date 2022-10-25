@@ -248,10 +248,19 @@ function signrawtransactionwithwallet()
     echo "$signedtx"
 }
 
+function sha256()
+{
+    if [[ "$(uname)" == "Darwin" ]]; then
+        shasum -a 256
+    else
+        sha256sum
+    fi
+}
+
 # Returns SHA-256d of input, where SHA-256d(x) = SHA-256(SHA-256(x))
 function sha256d()
 {
-    echo -en "$(sha256sum | grep -Eo "[a-z0-9]{64}" | sed 's/.\{2\}/\\x&/g')" | sha256sum | grep -Eo "[a-z0-9]{64}"
+    echo -en "$(sha256 | grep -Eo "[a-z0-9]{64}" | sed 's/.\{2\}/\\x&/g')" | sha256 | grep -Eo "[a-z0-9]{64}"
 }
 
 # show_tx_by_id txid [blockhash]

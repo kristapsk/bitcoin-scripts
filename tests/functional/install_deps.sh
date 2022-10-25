@@ -7,14 +7,29 @@ if [[ -z "$BITCOIND_VERSION" ]]; then
     exit 1
 fi
 
+if [[ "$(uname)" == "Linux" ]]; then
+    platform="x86_64-linux-gnu"
+elif [[ "$(uname)" == "Darwin" ]]; then
+    if [[ $BITCOIND_VERSION > 23.0 || $BITCOIND_VERSION == 23.0 ]]; then
+        platform="x86_64-apple-darwin"
+    else
+        platform="osx64"
+    fi
+
+    brew install bash coreutils jq
+else
+    echo "Unsupported platform: $(uname)"
+    exit 1
+fi
+
 if sudo cp ~/bitcoin/bitcoin-$BITCOIND_VERSION/bin/bitcoind /usr/local/bin/bitcoind; then
     echo "found cached bitcoind"
     sudo cp ~/bitcoin/bitcoin-$BITCOIND_VERSION/bin/bitcoin-cli /usr/local/bin/bitcoin-cli
 else
     mkdir -p ~/bitcoin && \
     pushd ~/bitcoin && \
-    wget https://bitcoincore.org/bin/bitcoin-core-$BITCOIND_VERSION/bitcoin-$BITCOIND_VERSION-x86_64-linux-gnu.tar.gz && \
-    tar xvfz bitcoin-$BITCOIND_VERSION-x86_64-linux-gnu.tar.gz && \
+    wget https://bitcoincore.org/bin/bitcoin-core-$BITCOIND_VERSION/bitcoin-$BITCOIND_VERSION-$platform.tar.gz && \
+    tar xvfz bitcoin-$BITCOIND_VERSION-$platform.tar.gz && \
     sudo cp ./bitcoin-$BITCOIND_VERSION/bin/bitcoind /usr/local/bin/bitcoind && \
     sudo cp ./bitcoin-$BITCOIND_VERSION/bin/bitcoin-cli /usr/local/bin/bitcoin-cli && \
     popd
