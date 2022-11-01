@@ -511,13 +511,11 @@ function show_decoded_tx_for_human()
         if [ "$has_total_input_sum" == "1" ]; then
             echo -en "\nTotal input sum: $total_input_sum BTC"
         fi
-        if [ "$total_output_sum" != "0.00000000" ]; then
-            echo -e "\nTotal output sum: $total_output_sum BTC"
-            if [ "$has_total_input_sum" == "1" ]; then
-                fee="$(bc_float_calc "$total_input_sum - $total_output_sum")"
-                feerate="$(echo "$fee * 100000000 / $tx_vsize" | bc)"
-                echo "Fee: $(bc_float_calc "$total_input_sum - $total_output_sum") BTC ($feerate sat/vB)"
-            fi
+        echo -e "\nTotal output sum: $total_output_sum BTC"
+        if [ "$has_total_input_sum" == "1" ]; then
+            fee="$(bc_float_calc "$total_input_sum - $total_output_sum")"
+            feerate="$(echo "$fee * 100000000 / $tx_vsize" | bc)"
+            echo "Fee: $(bc_float_calc "$total_input_sum - $total_output_sum") BTC ($feerate sat/vB)"
         fi
     fi
     hr
