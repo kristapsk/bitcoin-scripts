@@ -9,4 +9,4 @@ if [ "$2" == "" ]; then
     exit
 fi
 
-randamount "$1" "$2"
+randamount "$(tr ',' '.' <<< $1)" "$(tr ',' '.' <<< $2)"
