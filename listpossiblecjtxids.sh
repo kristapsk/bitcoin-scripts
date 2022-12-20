@@ -21,7 +21,7 @@ echo "Block $blockheight ($blockhash)"
 
 while read -r txid; do
     txdata="$(call_bitcoin_cli getrawtransaction "$txid" true "$blockhash")"
-    if [ "$(is_likely_cj_tx "$txdata")" ]; then
+    if is_likely_cj_tx "$txdata"; then
         echo "$txid"
     fi
 done < <(call_bitcoin_cli getblock "$blockhash" | jq -r ".tx[]")

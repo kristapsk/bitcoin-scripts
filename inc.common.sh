@@ -33,6 +33,9 @@ TX_P2WPKH_OUT_SIZE=31
 MAINNET_ADDRESS_REGEX="\([13][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|bc1[qpzry9x8gf2tvdw0s][ac-hi-np-z02-9]\{7,86\}\|BC1[QPZRY9X8GF2TVDW0S][AC-HI-NP-Z02-9]\{7,86\}\)"
 TESTNET_ADDRESS_REGEX="\([mn2][a-km-zA-HJ-NP-Z1-9]\{25,39\}\|\(bcrt1\|tb1\)[qpzry9x8gf2tvdw0s][ac-hi-np-z02-9]\{7,86\}\|TB1[QPZRY9X8GF2TVDW0S][AC-HI-NP-Z02-9]\{7,86\}\)"
 
+TRUE=0
+FALSE=1
+
 # Common useful functions
 
 function command_exists()
@@ -312,11 +315,19 @@ function is_likely_cj_tx()
     #   3) number of inputs >= number of equal value outputs
     #   4) number of value outputs between number of outputs matching (1) to that * 2
     input_count="$(jq ".vin | length" <<< "$decodedtx")"
+    if (( input_count < 2 )); then
+        return $FALSE
+    fi
+
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" | \
         grep -v "^0$" )
-    readarray -t output_addresses <<< "$(get_decoded_tx_addresses "$1")"
     readarray -t equal_output_values < <( echo "${output_values[@]}" | \
         tr ' ' '\n' | sort | uniq -D | uniq )
+    if (( ${#equal_output_values[@]} == 0 )); then
+        return $FALSE
+    fi
+
+    readarray -t output_addresses <<< "$(get_decoded_tx_addresses "$1")"
     equal_output_count=0
     equal_output_addresses=()
     for i in $(seq 0 $(( ${#output_values[@]} - 1 )) ); do
@@ -328,8 +339,6 @@ function is_likely_cj_tx()
     unique_equal_output_addresses=($(echo "${equal_output_addresses[@]}" | \
         tr ' ' '\n' | sort -u | tr '\n' ' '))
     if \
-        (( input_count >= 2 )) && \
-        (( ${#equal_output_values[@]} > 0 )) && \
         (( ${#unique_equal_output_addresses[@]} > 1 )) && \
         (( input_count >= equal_output_count )) && \
         (( ${#output_values[@]} >= equal_output_count )) && \
@@ -337,9 +346,9 @@ function is_likely_cj_tx()
         (( ${#unique_equal_output_addresses[@]} > 1 )) && \
         [[ ! $(is_omni_tx "$decodedtx") ]]
     then
-        echo "1"
+        return $TRUE
     else
-        echo ""
+        return $FALSE
     fi
 }
 
@@ -371,7 +380,11 @@ function show_decoded_tx_for_human()
     decodedtx="$1"
     txid="$(echo "$1" | jq -r ".txid")"
     wallettxdata="$(try_bitcoin_cli gettransaction "$txid" true)"
-    is_likely_cj="$(is_likely_cj_tx "$decodedtx")"
+    if is_likely_cj_tx "$decodedtx"; then
+        is_likely_cj="1"
+    else
+        is_likely_cj="0"
+    fi
     echo "TxID: $txid"
     hr
     tx_vsize="$(echo "$1" | jq -r ".vsize")"
