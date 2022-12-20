@@ -309,11 +309,20 @@ function is_omni_tx()
 function is_likely_cj_tx()
 {
     decodedtx="$1"
+
+    # Coinbase transactions can't be coinjoins.
+    # Also, no known coinjoin implementations produce OP_RETURN outputs.
+    # So we can quit early and skip any more parsing for them.
+    if grep -qs "coinbase|OP_RETURN" <<< "$decodedtx"; then
+        return $FALSE
+    fi
+
     # Possible CJ tx rules:
     #   1) input count is 2 or more
     #   2) multiple equal value outputs to 2 or more different addresses
     #   3) number of inputs >= number of equal value outputs
     #   4) number of value outputs between number of outputs matching (1) to that * 2
+
     input_count="$(jq ".vin | length" <<< "$decodedtx")"
     if (( input_count < 2 )); then
         return $FALSE
@@ -343,8 +352,7 @@ function is_likely_cj_tx()
         (( input_count >= equal_output_count )) && \
         (( ${#output_values[@]} >= equal_output_count )) && \
         (( ${#output_values[@]} <= $(( equal_output_count * 2 )) )) && \
-        (( ${#unique_equal_output_addresses[@]} > 1 )) && \
-        [[ ! $(is_omni_tx "$decodedtx") ]]
+        (( ${#unique_equal_output_addresses[@]} > 1 ))
     then
         return $TRUE
     else
