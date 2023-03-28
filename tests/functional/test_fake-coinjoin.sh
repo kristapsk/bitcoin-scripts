@@ -21,5 +21,16 @@ for i in $(seq 0 2); do
     fi
 done
 
+# tick chain forward
+$bitcoin_cli generatetoaddress 1 "$($bitcoin_cli getnewaddress)"
+
+cjtxids="$("$(dirname "$0")/../../listpossiblecjtxids.sh" "${bitcoin_args[@]:?}" "$($bitcoin_cli getblockcount)")"
+cjtxids_count="$(( $(wc -l <<< "$cjtxids") - 1))"
+if (( cjtxids_count != 1 )); then
+    echo "Unexpected cj tx id count $cjtxids_count in last block"
+    echo "$cjtxids"
+    retval=1
+fi
+
 . "$(dirname "$0")/inc.teardown.sh"
 
