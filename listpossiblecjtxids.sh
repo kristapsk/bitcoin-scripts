@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # shellcheck source=/dev/null
-. "$(dirname "$0")/inc.common.sh"
+. "$(dirname "$(readlink -m "$0")")/inc.common.sh"
 
 if [ "$1" == "" ]; then
     echo "Usage: $(basename "$0") blockhash|blockheight"

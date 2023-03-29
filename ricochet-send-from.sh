@@ -2,7 +2,7 @@
 
 # shellcheck disable=SC1091
 # shellcheck source=./inc.common.sh
-. "$(dirname "$0")/inc.common.sh"
+. "$(dirname "$(readlink -m "$0")")/inc.common.sh"
 
 if [ "$2" == "" ]; then
     echo "Usage: $(basename "$0") [options] source_address destination_address [hops [txfee [sleeptime_min [sleeptime_max [hop_confirmations [txfee_factor]]]]]]"
