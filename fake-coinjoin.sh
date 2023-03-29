@@ -41,7 +41,7 @@ shift
 if (( tx_fees >= 1000 )); then
     fee="$(echo "$tx_fees * 0.00000001" | bc | btc_amount_format)"
 else
-    fee="$($(dirname "$0")/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)"
+    fee="$($(dirname "$(readlink -m "$0")")/estimatesmartfee.sh $bitcoin_cli_options $tx_fees)"
     if [ "$fee" == "" ]; then
         echoerr "estimatesmartfee failed"
         exit 1

@@ -10,7 +10,7 @@ if [ "$2" == "" ]; then
     echo "  source_address      - source address (all funds from that address will be send)"
     echo "  destination_address - destination address"
     echo "  hops                - number of hops (default: 5)"
-    echo "  txfee               - average transaction fee per kvB (default: \"estimatesmartfee 2\", currently $($(dirname "$0")/estimatesmartfee.sh $bitcoin_cli_options 2) BTC)"
+    echo "  txfee               - average transaction fee per kvB (default: \"estimatesmartfee 2\", currently $($(dirname "$(readlink -m "$0")")/estimatesmartfee.sh $bitcoin_cli_options 2) BTC)"
     echo "  sleeptime_min       - minimum sleep time between hops in seconds (default: 10)"
     echo "  sleeptime_max       - maximum sleep time between hops in seconds (default: 15)"
     echo "  hop_confirmations   - minimum number of confirmations between hops (default: 0)"
@@ -41,7 +41,7 @@ fi
 if [ "$4" != "" ]; then
     txfee="$4"
 else
-    txfee="$($(dirname "$0")/estimatesmartfee.sh $bitcoin_cli_options 2)"
+    txfee="$($(dirname "$(readlink -m "$0")")/estimatesmartfee.sh $bitcoin_cli_options 2)"
 fi
 if [ "$6" != "" ]; then
     sleeptime_min=$5
