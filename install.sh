@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016
 
 if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
     echo "Installs Bitcoin scripts."
@@ -29,7 +30,7 @@ DOC_LIST="
 
 for doc in $DOC_LIST; do
     echo -n "Installing $doc..."
-    $sudo cp $doc "$PREFIX"
+    $sudo cp "$doc" "$PREFIX"
     echo ""
 done
 
