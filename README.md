@@ -2,13 +2,27 @@
 
 Various shell scripts, mainly to be used together with [Bitcoin Core](https://github.com/bitcoin/bitcoin) (bitcoind or bitcoin-qt) wallet. I also have [some scripts for CLN (Core Lightning / c-lightning)](https://github.com/kristapsk/cln-scripts).
 
+## Installation
+
 Dependencies: `bash` 4+, `bitcoin-cli` (v0.17 or newer), `awk`, `bc`, [`jq`](https://github.com/stedolan/jq), `sed`.
+
+Gentoo Linux users can use [my portage overlay](https://github.com/kristapsk/portage-overlay):
+```sh
+# layman -o https://raw.github.com/kristapsk/portage-overlay/master/overlay.xml -L -a kristapsk
+# emerge -av bitcoin-scripts
+```
+
+Otherwise, use provided `install.sh` script, which will install everything in `/opt/bitcoin-scripts` with symlinks in `/usr/local/bin` (so that they are on `PATH`).
+
+## Usage
 
 Scripts use Bitcoin JSON-RPC API, so it must be enabled in `bitcoin.conf` (`server=1`, `rpcuser=` and `rpcpassword=` settings).
 
 Running each script without arguments will display usage. Most of the scripts will pass any options starting with dashes at the beginning of argument list directly to `bitcoin-cli` (like `-testnet` or `-rpcuser`).
 
 None of scripts do wallet unlocking by itself, so you must call `bitcoin-cli walletpassphrase` before and `bitcoin-cli walletlock` afterwards manually when using scripts that sends out transactions (`fake-coinjoin.sh`, `ricochet-send.sh`), if your wallet is locked (it should be on mainnet).
+
+When installed system wide, call them with `bc-` prefix, without `.sh` suffix (so `checktransaction.sh` becomes `bc-checktransaction`).
 
 | Script | Description |
 | --- | --- |
