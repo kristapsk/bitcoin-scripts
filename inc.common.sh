@@ -291,18 +291,31 @@ function has_index()
     [[ "$indexinfo" != "null" ]]
 }
 
+# is_op_return_protocol_tx protocol_tag decodedtx
+function is_op_return_protocol_tx()
+{
+    protocol_tag="$1"
+    decodedtx="$2"
+    readarray -t protocol_scripts < \
+        <( echo "$2" | jq -r ".vout[].scriptPubKey.asm" | \
+            grep "^OP_RETURN $protocol_tag")
+    if (( ${#protocol_scripts[@]} > 0 )); then
+        return $TRUE
+    else
+        return $FALSE
+    fi
+}
+
 # is_omni_tx decodedtx
 function is_omni_tx()
 {
-    decodedtx="$1"
-    readarray -t omni_scripts < \
-        <( echo "$1" | jq -r ".vout[].scriptPubKey.asm" | \
-            grep "^OP_RETURN 6f6d6e69")
-    if (( ${#omni_scripts[@]} > 0 )); then
-        echo "1"
-    else
-        echo ""
-    fi
+    is_op_return_protocol_tx "6f6d6e69" "$1"
+}
+
+# is_openassets_tx decodedtx
+function is_openassets_tx()
+{
+    is_op_return_protocol_tx "4f41" "$1"
 }
 
 # is_likely_cj_tx decodedtx
