@@ -50,8 +50,6 @@ $ ./ricochet-send.sh 0.001 bc1qwfafhs3ztp5d78n3jwwvlel0m7g0njj949zdya 5 $(./esti
 ```
 ## Support
 
-[![tippin.me](https://badgen.net/badge/%E2%9A%A1%EF%B8%8Ftippin.me/@kristapsk/F0918E)](https://tippin.me/@kristapsk)
-
-If you want to support my work on this project and other free software (I am also maintainer of [JoinMarket](https://github.com/JoinMarket-Org/joinmarket-clientserver) and do other Bitcoin stuff), you can send some sats (Bitcoin) either [here](https://donate.kristapsk.lv/) (that's my self-hosted [SatSale](https://github.com/nickfarrow/SatSale) instance) or by using [tippin.me](https://tippin.me/@kristapsk).
+If you want to support my work on this project and other free software (I am also maintainer of [JoinMarket](https://github.com/JoinMarket-Org/joinmarket-clientserver) and do other Bitcoin stuff), you can send some sats (Bitcoin) [here](https://donate.kristapsk.lv/) (that's my self-hosted [SatSale](https://github.com/nickfarrow/SatSale) instance).
 
 There is also static donation address used in examples above - `bc1qwfafhs3ztp5d78n3jwwvlel0m7g0njj949zdya` ([signed](donation-address.txt.asc) with [my signature](https://github.com/JoinMarket-Org/joinmarket-clientserver/blob/709db9ea3b7a18a070e8b76943d57bdfad46df60/pubkeys/KristapsKaupe.asc)).
