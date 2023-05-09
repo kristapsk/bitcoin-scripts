@@ -5,10 +5,11 @@
 . "$(dirname "$(readlink -m "$0")")/inc.common.sh"
 
 if [ "$1" == "" ]; then
-    echo "Usage: $(basename "$0") [options] txid|address [blockhash]"
+    echo "Usage: $(basename "$0") [options] txid|address|rawtx [blockhash]"
     echo "Where:"
     echo "  txid        - transaction id (either plain hex or blockchain explorer URL containing it)"
     echo "  address     - Bitcoin address (shows transactions received to address)"
+    echo "  rawtx       - raw transaction hex"
     echo "  blockhash   - optional blockhash for a block where to look for a non-wallet / non-mempool tx"
     exit
 fi
@@ -35,6 +36,9 @@ elif is_http_url "$1"; then
     txids+=("$txid")
 elif is_hex_id "$1" "64"; then
     txids+=("$1")
+elif is_hex_string "$1"; then
+    txids+=("raw")
+    rawtx="$1"
 else
     echo "'$1' is neither valid transacion id nor address nor HTTP URL."
     exit 2
@@ -48,6 +52,11 @@ if (( ${#txids[@]} == 0 )); then
 fi
 
 for i in $(seq 0 $(( ${#txids[@]} - 1 )) ); do
-    show_decoded_tx_for_human "$(show_tx_by_id "${txids[$i]}" "$blockhash")"
+    if [[ "${txids[$i]}" == "raw" ]]; then
+        decoded_tx="$(call_bitcoin_cli -stdin decoderawtransaction <<< "$rawtx")"
+    else
+        decoded_tx="$(show_tx_by_id "${txids[$i]}" "$blockhash")"
+    fi
+    show_decoded_tx_for_human "$decoded_tx"
     echo
 done

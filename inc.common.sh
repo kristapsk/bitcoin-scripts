@@ -655,11 +655,17 @@ function is_http_url()
     grep -qsE "^https?://" <<< "$input"
 }
 
+function is_hex_string()
+{
+    input="$1"
+    grep -qsE "^[A-Za-z0-9]+$" <<< "$input"
+}
+
 function is_hex_id()
 {
     input="$1"
     hexlen="$2"
-    grep -qsE "[A-Za-z0-9]{$hexlen}" <<< "$input"
+    grep -qsE "^[A-Za-z0-9]{$hexlen}$" <<< "$input"
 }
 
 function get_hex_id_from_string()
