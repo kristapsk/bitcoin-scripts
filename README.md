@@ -8,7 +8,7 @@ Dependencies: `bash` 4+, `bitcoin-cli` (v0.17 or newer), `awk`, `bc`, [`jq`](htt
 
 Gentoo Linux users can use [my portage overlay](https://github.com/kristapsk/portage-overlay):
 ```sh
-# layman -o https://raw.github.com/kristapsk/portage-overlay/master/overlay.xml -L -a kristapsk
+# eselect repository add kristapsk git https://github.com/kristapsk/portage-overlay.git
 # emerge -av bitcoin-scripts
 ```
 
