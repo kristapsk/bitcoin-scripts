@@ -116,7 +116,7 @@ echo "input_type: $input_type"
 
 function select_default()
 {
-    jq -c "" | shuf | jq ""
+    jq -c "." | shuf | jq "."
 }
 
 function select_greediest()
