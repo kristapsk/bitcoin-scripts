@@ -17,6 +17,7 @@ elif [[ "$(uname)" == "Darwin" ]]; then
     fi
 
     brew install bash coreutils jq
+    #echo "export PATH=\"/usr/local/opt/coreutils/libexec/gnubin:$PATH\"" >> ~/.bashrc
 else
     echo "Unsupported platform: $(uname)"
     exit 1
