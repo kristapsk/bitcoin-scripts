@@ -111,7 +111,7 @@ rawtx="$(show_tx_by_id "$txid")"
 #echo "$rawtx"
 vout_idx=""
 idx=0
-while read -r vout_address; do
+while read -u 3 -r vout_address; do
     if [ "$vout_address" == "${ricochet_addresses[0]}" ]; then
         vout_idx=$idx
         value="$(echo "$rawtx" | jq -r ".vout[$vout_idx].value")"
@@ -121,7 +121,7 @@ while read -r vout_address; do
         fi
     fi
     ((idx++))
-done <<< "$(get_decoded_tx_addresses "$rawtx")"
+done 3< <(get_decoded_tx_addresses "$rawtx")
 if [ "$prev_pubkey" == "" ]; then
     echoerr "$rawtx"
     echoerr "FATAL: Can't find the right vout in the first transaction, please fill a bug report!"
