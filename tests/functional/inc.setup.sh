@@ -1,5 +1,6 @@
 # shellcheck shell=bash
 
+bitcoin_root=""
 bitcoin_test_datadir="$(mktemp)"
 bitcoin_args=(
     "-regtest"
@@ -7,6 +8,10 @@ bitcoin_args=(
 )
 bitcoind="bitcoind ${bitcoin_args[*]} -fallbackfee=0.0002"
 bitcoin_cli="bitcoin-cli ${bitcoin_args[*]}"
+if [[ -n $bitcoin_root ]]; then
+    bitcoind="$bitcoin_root/$bitcoind"
+    bitcoin_cli="$bitcoin_root/$bitcoin_cli"
+fi
 
 # shellcheck disable=SC2034
 retval=0
