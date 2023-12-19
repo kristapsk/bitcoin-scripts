@@ -16,12 +16,15 @@ fi
 # shellcheck disable=SC2034
 retval=0
 
-#set -x
+set -x
 
 rm -rf "$bitcoin_test_datadir"
 mkdir "$bitcoin_test_datadir"
 echo -e "[regtest]\nrpcuser=bitcoinrpc\nrpcpassword=123456abcdef" \
     > "$bitcoin_test_datadir/bitcoin.conf"
+if [[ "$($bitcoind -version | grep -Eo 'v[0-9]+')" == "v26" ]]; then
+    echo "deprecatedrpc=create_bdb" >> "$bitcoin_test_datadir}/bitcoin.conf"
+fi
 $bitcoind -daemon || exit 1
 # Wait until bitcoind has started properly
 while ! $bitcoin_cli getblockchaininfo 2> /dev/null; do sleep 0.1; done

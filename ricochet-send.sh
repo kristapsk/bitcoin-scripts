@@ -111,7 +111,7 @@ rawtx="$(show_tx_by_id "$txid")"
 #echo "$rawtx"
 vout_idx=""
 idx=0
-while read -r vout_address; do
+while read -u 3 -r vout_address; do
     if [ "$vout_address" == "${ricochet_addresses[0]}" ]; then
         vout_idx=$idx
         value="$(echo "$rawtx" | jq -r ".vout[$vout_idx].value")"
@@ -121,7 +121,7 @@ while read -r vout_address; do
         fi
     fi
     ((idx++))
-done <<< "$(get_decoded_tx_addresses "$rawtx")"
+done 3< <(get_decoded_tx_addresses "$rawtx")
 if [ "$prev_pubkey" == "" ]; then
     echoerr "$rawtx"
     echoerr "FATAL: Can't find the right vout in the first transaction, please fill a bug report!"
@@ -133,6 +133,7 @@ use_txid="$txid"
 
 # Prepare and sign rest of transactions
 echo "Preparing rest of transactions..."
+set -x
 signedtxes=()
 for i in $(seq 1 $(( hops - 1 ))); do
     send_amount="$(bc_float_calc "$send_amount - ${ricochet_fees[$i]}")"
@@ -147,6 +148,7 @@ for i in $(seq 1 $(( hops - 1 ))); do
     prev_pubkey="$(echo "$decodedtx" | jq -r ".vout[].scriptPubKey.hex")"
     echo "$use_txid"
 done
+set +x
 
 #printf '%s\n' "${signedtxes[@]}"
 
