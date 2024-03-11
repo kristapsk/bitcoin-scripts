@@ -332,12 +332,18 @@ function is_likely_cj_tx()
 
     # Possible CJ tx rules:
     #   1) input count is 2 or more
-    #   2) multiple equal value outputs to 2 or more different addresses
-    #   3) number of inputs >= number of equal value outputs
+    #   2) no address reuse in output side
+    #   3) multiple equal value outputs to 2 or more different addresses
+    #   4) number of inputs >= number of equal value outputs
     #   4) number of value outputs between number of outputs matching (1) to that * 2
 
     input_count="$(jq ".vin | length" <<< "$decodedtx")"
     if (( input_count < 2 )); then
+        return $FALSE
+    fi
+
+    output_addresses_raw="$(get_decoded_tx_addresses "$decodedtx")"
+    if [[ "$output_addresses_raw" != "$(uniq <<< "$output_addresses_raw")" ]]; then
         return $FALSE
     fi
 
@@ -349,7 +355,7 @@ function is_likely_cj_tx()
         return $FALSE
     fi
 
-    readarray -t output_addresses <<< "$(get_decoded_tx_addresses "$1")"
+    readarray -t output_addresses <<< "$output_addresses_raw"
     equal_output_count=0
     equal_output_addresses=()
     for i in $(seq 0 $(( ${#output_values[@]} - 1 )) ); do
@@ -490,7 +496,7 @@ function show_decoded_tx_for_human()
     readarray -t output_addresses <<< "$(get_decoded_tx_addresses "$1")"
     readarray -t output_asms < <( echo "$1" | jq -r ".vout[].scriptPubKey.asm" )
     readarray -t output_values < <( echo "$1" | jq ".vout[].value" )
-    if [ "$is_likely_cj" ]; then
+    if [ "$is_likely_cj" == "1" ]; then
         readarray -t equal_output_values < <( echo "${output_values[@]}" | tr ' ' '\n' | sort | uniq -D | uniq )
     fi
     if (( ${#input_txids[@]} == 0 )); then
@@ -509,7 +515,7 @@ function show_decoded_tx_for_human()
                 output_address="${output_addresses[$i]}"
                 if [ "$output_address" != "null" ]; then
                     echo -n "$output_address"
-                    if [ "$is_likely_cj" ] && [ "$amount" != "0.00000000" ]; then
+                    if [ "$is_likely_cj" == "1" ] && [ "$amount" != "0.00000000" ]; then
                         if [[ " ${equal_output_values[@]} " =~ " ${output_values[$i]} " ]]; then
                             echo -n " [cjout?]"
                         fi
