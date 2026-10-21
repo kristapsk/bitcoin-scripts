@@ -104,8 +104,15 @@ send_amount=$(bc_float_calc "$amount + $ricochet_fee_sum")
 
 # Send out first transaction
 echo -n "0: (wallet) -> ${ricochet_addresses[0]} ($send_amount) - "
-call_bitcoin_cli settxfee "${ricochet_fees[0]}" > /dev/null
-txid="$(call_bitcoin_cli sendtoaddress "${ricochet_addresses[0]}" "$send_amount")"
+# sendtoaddress takes sat/vB, while our fee selection uses BTC/kvB.
+if call_bitcoin_cli help sendtoaddress | grep -q 'fee_rate'; then
+    fee_rate="$(bc_float_calc "${ricochet_fees[0]} * 100000")"
+    txid="$(call_bitcoin_cli -named sendtoaddress "address=${ricochet_addresses[0]}" "amount=$send_amount" "fee_rate=$fee_rate")"
+else
+    # Core before 0.21 has no per-transaction fee_rate argument.
+    call_bitcoin_cli settxfee "${ricochet_fees[0]}" > /dev/null
+    txid="$(call_bitcoin_cli sendtoaddress "${ricochet_addresses[0]}" "$send_amount")"
+fi
 echo "$txid"
 rawtx="$(show_tx_by_id "$txid")"
 #echo "$rawtx"
