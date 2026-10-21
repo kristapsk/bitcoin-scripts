@@ -1,12 +1,18 @@
 # shellcheck shell=bash
 
 bitcoin_root=""
-bitcoin_test_datadir="$(mktemp)"
+bitcoin_test_datadir="$(mktemp -d)"
+wallet_type="${WALLET_TYPE:-legacy}"
+case "$wallet_type" in
+    legacy|descriptor) ;;
+    *) echo "Unknown WALLET_TYPE: $wallet_type"; exit 1 ;;
+esac
 bitcoin_args=(
     "-regtest"
     "-datadir=$bitcoin_test_datadir"
 )
-bitcoind="bitcoind ${bitcoin_args[*]} -fallbackfee=0.0002"
+# Keep the fee-floor regression deterministic across Core defaults.
+bitcoind="bitcoind ${bitcoin_args[*]} -fallbackfee=0.0002 -minrelaytxfee=0.00001"
 bitcoin_cli="bitcoin-cli ${bitcoin_args[*]}"
 if [[ -n $bitcoin_root ]]; then
     bitcoind="$bitcoin_root/$bitcoind"
@@ -18,27 +24,32 @@ retval=0
 
 #set -x
 
-rm -rf "$bitcoin_test_datadir"
-mkdir "$bitcoin_test_datadir"
 echo -e "[regtest]\nrpcuser=bitcoinrpc\nrpcpassword=123456abcdef" \
     > "$bitcoin_test_datadir/bitcoin.conf"
 $bitcoind -daemon || exit 1
 # Wait until bitcoind has started properly
 while ! $bitcoin_cli getblockchaininfo 2> /dev/null; do sleep 0.1; done
-# Create and load wallet if there is no default wallet (descriptor wallets aren't supported yet)
-if [[ "$($bitcoin_cli listwallets | jq ". | length")" == "0" ]]; then
+# Keep the pre-descriptor Core path, but never silently fall back when
+# descriptor coverage was requested.
+if [[ "$wallet_type" == descriptor ]]; then
+    $bitcoin_cli -named createwallet wallet_name=tests descriptors=true || exit 1
+elif [[ "$($bitcoin_cli listwallets | jq ". | length")" == "0" ]]; then
     if ! $bitcoin_cli -named createwallet wallet_name=tests descriptors=false 2> /dev/null; then
-        # fallback for old Core versions
-        $bitcoin_cli createwallet tests
+        $bitcoin_cli createwallet tests || exit 1
     fi
 fi
-#$bitcoin_cli loadwallet tests
+actual_descriptors="$($bitcoin_cli getwalletinfo | jq -r '.descriptors // false')"
+if [[ "$wallet_type" == descriptor && "$actual_descriptors" != true ]] ||
+   [[ "$wallet_type" == legacy && "$actual_descriptors" != false ]]; then
+    echo "Unexpected wallet type: $actual_descriptors"
+    $bitcoin_cli stop
+    exit 1
+fi
 # Generate some coins
-$bitcoin_cli generatetoaddress 1 "$($bitcoin_cli getnewaddress "" "legacy")"
-$bitcoin_cli generatetoaddress 1 "$($bitcoin_cli getnewaddress "" "legacy")"
-$bitcoin_cli generatetoaddress 1 "$($bitcoin_cli getnewaddress "" "legacy")"
-$bitcoin_cli generatetoaddress 1 "$($bitcoin_cli getnewaddress "" "p2sh-segwit")"
-$bitcoin_cli generatetoaddress 1 "$($bitcoin_cli getnewaddress "" "p2sh-segwit")"
-$bitcoin_cli generatetoaddress 1 "$($bitcoin_cli getnewaddress "" "p2sh-segwit")"
-# 120 blocks more, so that coins above are spendable
+for address_type in legacy p2sh-segwit bech32; do
+    for i in 1 2 3; do
+        $bitcoin_cli generatetoaddress 1 "$($bitcoin_cli getnewaddress "" "$address_type")"
+    done
+done
+# Mature the funding outputs.
 $bitcoin_cli generatetoaddress 120 "$($bitcoin_cli getnewaddress)"

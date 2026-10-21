@@ -195,11 +195,11 @@ for i in $(seq 1 $(( hops - 1)) | tac); do
         fi
     fi
     fee="$(randamount "$txfee_min" "$txfee_max")"
+    prev_amount="$send_amount"
     send_amount=$(bc_float_calc "$send_amount - $(bc_float_calc "$tx_vsize * $fee * 0.001")")
     echo -n "$j: ${ricochet_addresses[$i]} -> ${ricochet_addresses[$(( i - 1 ))]} ($send_amount) - "
     rawtx=$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$use_txid\",\"vout\":0}]" "{\"${ricochet_addresses[$(( i - 1 ))]}\":$send_amount}")
-    privkey=$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$i]}")
-    signedtx=$(signrawtransactionwithkey "$rawtx" "[\"$privkey\"]" "[{\"txid\":\"$use_txid\",\"vout\":0,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$send_amount}]")
+    signedtx=$(signrawtransactionwithwallet "$rawtx" "[{\"txid\":\"$use_txid\",\"vout\":0,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$prev_amount}]")
     decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
     use_txid="$(echo "$decodedtx" | jq -r ".txid")"
     signedtxes+=("$signedtx")
