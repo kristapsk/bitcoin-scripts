@@ -53,3 +53,14 @@ $ ./ricochet-send.sh 0.001 bc1qwfafhs3ztp5d78n3jwwvlel0m7g0njj949zdya 5 $(./esti
 If you want to support my work on this project and other free software (I am also maintainer of [JoinMarket](https://github.com/JoinMarket-Org/joinmarket-clientserver) and do other Bitcoin stuff), you can send some sats (Bitcoin) [here](https://donate.kristapsk.lv/) (that's my self-hosted [SatSale](https://github.com/nickfarrow/SatSale) instance).
 
 There is also static donation address used in examples above - `bc1qwfafhs3ztp5d78n3jwwvlel0m7g0njj949zdya` ([signed](donation-address.txt.asc) with [my signature](https://github.com/JoinMarket-Org/joinmarket-clientserver/blob/709db9ea3b7a18a070e8b76943d57bdfad46df60/pubkeys/KristapsKaupe.asc)).
+
+### Wallet compatibility
+
+The sending scripts support both legacy and descriptor wallets with private keys.
+Unlock encrypted wallets before running them. Ricochet transactions are signed
+by the wallet without exporting private keys; the whole chain is prepared before
+the delayed broadcasts, so the wallet can be locked after preparation.
+
+Functional tests use a real regtest node. Run `WALLET_TYPE=legacy ./tests/functional/test_all.sh`
+or `WALLET_TYPE=descriptor ./tests/functional/test_all.sh`. CI covers both types
+on Core 25.2, legacy wallets on 0.17.2, and descriptor wallets on 31.1.

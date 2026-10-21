@@ -240,15 +240,19 @@ function signrawtransactionwithkey()
 
 function signrawtransactionwithwallet()
 {
-    signedtx=$(try_bitcoin_cli signrawtransactionwithwallet "$1" | jq -r ".hex")
-    if [ "$signedtx" == "" ]; then
-        signedtx=$(try_bitcoin_cli signrawtransaction "$1" | jq -r ".hex")
+    local result
+    # Explicit prevouts also allow signing children whose parents have not
+    # been broadcast yet. No private key export is needed for either wallet type.
+    result=$(try_bitcoin_cli signrawtransactionwithwallet "$1" "${2:-[]}")
+    if [ "$result" == "" ]; then
+        result=$(try_bitcoin_cli signrawtransaction "$1" "${2:-[]}")
     fi
-    if [ "$signedtx" == "" ]; then
-        echoerr "FATAL: signing transaction with wallet failed. Is wallet locked?"
+    if ! jq -e '.complete == true and (.hex | type == "string")' <<< "$result" > /dev/null; then
+        echoerr "FATAL: signing transaction with wallet failed or incomplete. Is wallet locked?"
         kill $$
+        return 1
     fi
-    echo "$signedtx"
+    jq -r '.hex' <<< "$result"
 }
 
 function sha256()

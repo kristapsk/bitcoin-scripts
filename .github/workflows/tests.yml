@@ -2,11 +2,17 @@ name: Test Bitcoin scripts
 on: [push, pull_request]
 jobs:
   build:
-    name: bitcoind ${{ matrix.bitcoind-version }} on ${{ matrix.os }}
+    name: bitcoind ${{ matrix.bitcoind-version }} (${{ matrix.wallet-type }}) on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        bitcoind-version: ["0.17.2", "25.2"]
+        bitcoind-version: ["0.17.2", "25.2", "31.1"]
+        wallet-type: [legacy, descriptor]
+        exclude:
+          - bitcoind-version: "0.17.2"
+            wallet-type: descriptor
+          - bitcoind-version: "31.1"
+            wallet-type: legacy
         os: [macos-15-intel, macos-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v3
@@ -29,4 +35,6 @@ jobs:
           BITCOIND_VERSION: ${{ matrix.bitcoind-version }}
         run: ./tests/functional/install_deps.sh
       - name: Run functional tests
+        env:
+          WALLET_TYPE: ${{ matrix.wallet-type }}
         run: ./tests/functional/test_all.sh

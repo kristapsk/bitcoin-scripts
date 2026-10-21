@@ -142,11 +142,11 @@ use_txid="$txid"
 echo "Preparing rest of transactions..."
 signedtxes=()
 for i in $(seq 1 $(( hops - 1 ))); do
+    prev_amount="$send_amount"
     send_amount="$(bc_float_calc "$send_amount - ${ricochet_fees[$i]}")"
     echo -n "$i: ${ricochet_addresses[$(( i - 1 ))]} -> ${ricochet_addresses[$i]} ($send_amount) - "
     rawtx="$(call_bitcoin_cli createrawtransaction "[{\"txid\":\"$use_txid\",\"vout\":$vout_idx}]" "{\"${ricochet_addresses[$i]}\":$send_amount}")"
-    privkey="$(call_bitcoin_cli dumpprivkey "${ricochet_addresses[$(( i - 1 ))]}")"
-    signedtx="$(signrawtransactionwithkey "$rawtx" "[\"$privkey\"]" "[{\"txid\":\"$use_txid\",\"vout\":$vout_idx,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$send_amount}]")"
+    signedtx="$(signrawtransactionwithwallet "$rawtx" "[{\"txid\":\"$use_txid\",\"vout\":$vout_idx,\"scriptPubKey\":\"$prev_pubkey\",\"amount\":$prev_amount}]")"
     decodedtx="$(call_bitcoin_cli decoderawtransaction "$signedtx")"
     use_txid="$(echo "$decodedtx" | jq -r ".txid")"
     signedtxes+=("$signedtx")
