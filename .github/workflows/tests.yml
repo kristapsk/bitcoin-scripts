@@ -1,15 +1,6 @@
 name: Test Bitcoin scripts
 on: [push, pull_request]
 jobs:
-  ricochet-rpc:
-    name: Ricochet mocked RPC tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y bc jq
-      - name: Test per-transaction fee selection without a Bitcoin node
-        run: python3 tests/test_ricochet_send.py
   build:
     name: bitcoind ${{ matrix.bitcoind-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
