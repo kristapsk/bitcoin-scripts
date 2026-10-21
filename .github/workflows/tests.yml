@@ -6,7 +6,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        bitcoind-version: ["0.17.2", "25.2"]
+        bitcoind-version: ["0.17.2", "31.1"]
         os: [macos-15-intel, macos-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v3
