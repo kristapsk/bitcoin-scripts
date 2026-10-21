@@ -75,13 +75,12 @@ class RicochetSendTests(unittest.TestCase):
             work = Path(directory)
             for name in ('ricochet-send.sh', 'inc.common.sh', 'estimatesmartfee.sh'):
                 shutil.copy2(ROOT / name, work / name)
-            # Record the real random selections, including their original units.
+            # Record deterministic in-range selections, including their original units.
             with (work / 'inc.common.sh').open('a') as common:
                 common.write('''
-eval "$(declare -f randamount | sed '1s/randamount/original_randamount/')"
 randamount() {
     local selected
-    selected="$(original_randamount "$@")"
+    selected="$(bc_float_calc "($1 + $2) / 2")"
     echo "$1 $2 $selected" >> "$MOCK_STATE/draws"
     echo "$selected"
 }
