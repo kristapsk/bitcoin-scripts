@@ -27,6 +27,12 @@ while args and args[0].startswith('-'):
 method, *args = args
 if method == 'getwalletinfo':
     print('{}')
+elif method == 'help':
+    assert args == ['sendtoaddress']
+    print('sendtoaddress address amount' + (' fee_rate' if os.environ['HAS_FEE_RATE'] == '1' else ''))
+elif method == 'settxfee':
+    assert os.environ['HAS_FEE_RATE'] == '0'
+    print('true')
 elif method == 'getmempoolinfo':
     print(json.dumps({'mempoolminfee': float(os.environ['MEMPOOL_FEE'])}))
 elif method == 'estimatesmartfee':
@@ -34,8 +40,12 @@ elif method == 'estimatesmartfee':
 elif method == 'getnewaddress':
     print('1BoatSLRHtKNngkdXEeobR76b53LETtpyT')
 elif method == 'sendtoaddress':
-    params = dict(arg.split('=', 1) for arg in args)
-    assert set(params) == {'address', 'amount', 'fee_rate'}, params
+    if os.environ['HAS_FEE_RATE'] == '1':
+        params = dict(arg.split('=', 1) for arg in args)
+        assert set(params) == {'address', 'amount', 'fee_rate'}, params
+    else:
+        assert len(args) == 2
+        params = dict(zip(('address', 'amount'), args))
     (state / 'payment').write_text(json.dumps(params))
     print('mock-txid')
 elif method == 'getrawtransaction':
@@ -60,7 +70,7 @@ else:
 
 
 class RicochetSendTests(unittest.TestCase):
-    def run_script(self, fee='0.00002000', factor='0.3', minimum='0.00001000', hops=1):
+    def run_script(self, fee='0.00002000', factor='0.3', minimum='0.00001000', hops=1, has_fee_rate=True):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
             for name in ('ricochet-send.sh', 'inc.common.sh', 'estimatesmartfee.sh'):
@@ -80,22 +90,32 @@ randamount() {
             cli.write_text(MOCK)
             cli.chmod(0o755)
             env = dict(os.environ, PATH=str(work) + os.pathsep + os.environ['PATH'],
-                       MOCK_STATE=str(work), MEMPOOL_FEE=minimum)
+                       MOCK_STATE=str(work), MEMPOOL_FEE=minimum,
+                       HAS_FEE_RATE='1' if has_fee_rate else '0')
             result = subprocess.run(
                 ['bash', str(work / 'ricochet-send.sh'), '-rpcwallet=test-wallet',
                  '1', ADDRESS, str(hops), fee, '0', '1', '0', factor],
                 input='y\n', text=True, capture_output=True, env=env, timeout=20)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             calls = [json.loads(line) for line in (work / 'calls').read_text().splitlines()]
-            sends = [call for call in calls if 'sendtoaddress' in call]
+            sends = [call for call in calls if 'sendtoaddress' in call and 'help' not in call]
             self.assertEqual(len(sends), 1)
-            self.assertEqual(sends[0][:3], ['-rpcwallet=test-wallet', '-named', 'sendtoaddress'])
-            self.assertFalse(any('settxfee' in call for call in calls))
-            params = dict(arg.split('=', 1) for arg in sends[0][3:])
+            if has_fee_rate:
+                self.assertEqual(sends[0][:3], ['-rpcwallet=test-wallet', '-named', 'sendtoaddress'])
+                self.assertFalse(any('settxfee' in call for call in calls))
+                params = dict(arg.split('=', 1) for arg in sends[0][3:])
+            else:
+                self.assertEqual(sends[0][:2], ['-rpcwallet=test-wallet', 'sendtoaddress'])
+                params = dict(zip(('address', 'amount'), sends[0][2:]))
             draws = [[Decimal(x) for x in line.split()]
                      for line in (work / 'draws').read_text().splitlines()]
             self.assertEqual(len(draws), hops)
-            self.assertEqual(Decimal(params['fee_rate']), draws[0][2] * 100000)
+            if has_fee_rate:
+                self.assertEqual(Decimal(params['fee_rate']), draws[0][2] * 100000)
+            else:
+                setters = [c for c in calls if 'settxfee' in c]
+                self.assertEqual(setters, [['-rpcwallet=test-wallet', 'settxfee', str(draws[0][2])]])
+                self.assertLess(calls.index(setters[0]), calls.index(sends[0]))
             self.assertEqual(params['address'], ADDRESS)
             self.assertEqual(Decimal(params['amount']), Decimal(1) + sum(d[2] for d in draws[1:]))
             for low, high, selected in draws:
@@ -124,6 +144,9 @@ randamount() {
     def test_custom_variance(self):
         _, draws, _ = self.run_script(factor='0.2')
         self.assertEqual(draws[0][:2], [Decimal('0.000016'), Decimal('0.000024')])
+
+    def test_pre_021_compatibility(self):
+        self.run_script(hops=3, has_fee_rate=False)
 
     def test_estimated_fee(self):
         params, _, calls = self.run_script(fee='', factor='0')
